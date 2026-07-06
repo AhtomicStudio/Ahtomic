@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="design_doc_mode" content="canvas">
+<title>Headline &amp; Type Explorations</title>
+<link rel="stylesheet" href="../styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Archivo:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Sora:wght@400;600;700&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: transparent; }
+  .frame {
+    position: absolute; width: 880px; height: 470px; box-sizing: border-box;
+    background: var(--surface-page); border: 1px solid var(--line-1); border-radius: 12px;
+    overflow: hidden; color: var(--text-body);
+  }
+  .badge {
+    position: absolute; top: 14px; left: 14px; z-index: 2;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--text-muted); background: var(--surface-raised); border: 1px solid var(--line-1);
+    border-radius: 999px; padding: 4px 10px; text-decoration: none;
+  }
+  .fontnote {
+    position: absolute; top: 14px; right: 16px; z-index: 2;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em; color: var(--text-disabled);
+  }
+  .hero { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 0 72px; box-sizing: border-box; }
+  .hero .glow { position: absolute; inset: 0; background: radial-gradient(620px 300px at 50% 118%, rgba(255,59,47,0.16), transparent 70%); pointer-events: none; }
+  .kicker { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-muted); margin-bottom: 18px; position: relative; }
+  .sub { font-size: 15.5px; line-height: 1.6; color: var(--text-secondary); max-width: 440px; margin: 20px 0 0; position: relative; }
+  .ctas { display: flex; gap: 12px; margin-top: 30px; position: relative; }
+  .cta { padding: 12px 22px; border-radius: var(--radius-md); background: var(--accent); color: #fff; font-size: 14px; font-weight: 600; }
+  .cta.ghost { background: transparent; border: 1px solid var(--line-2); color: var(--text-secondary); font-weight: 500; }
+  .dot { color: var(--accent); }
+  h1 { margin: 0; position: relative; }
+</style>
+</head>
+<body>
+
+<!-- ── Copy board ─────────────────────────────────────────── -->
+<section id="1a" class="frame" style="left: 0; top: 0; height: 640px;">
+  <a class="badge" href="#1a">1a</a>
+  <span class="fontnote">copy board — headline / tagline pairs</span>
+  <div style="padding: 56px 64px 40px; display: flex; flex-direction: column; gap: 22px;">
+    <div style="font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-muted);">Headline candidates</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 40px;">
+      <div><div style="font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">Websites and apps, built <em style="font-family: var(--font-display); font-weight: 400;">properly</em><span class="dot">.</span></div><div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">current — calm, competent</div></div>
+      <div><div style="font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">Everything, down to the <em style="font-family: var(--font-display); font-weight: 400;">atom</em><span class="dot">.</span></div><div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">plays on the Ahtomic name</div></div>
+      <div><div style="font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">Small studio. Serious software<span class="dot">.</span></div><div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">terse, confident contrast</div></div>
+      <div><div style="font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">We ship what others <em style="font-family: var(--font-display); font-weight: 400;">pitch</em><span class="dot">.</span></div><div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">sharp, a little cocky</div></div>
+      <div><div style="font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">Ideas in. Products out<span class="dot">.</span></div><div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">process as promise</div></div>
+      <div><div style="font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">Built like it <em style="font-family: var(--font-display); font-weight: 400;">matters</em><span class="dot">.</span></div><div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">quiet conviction</div></div>
+      <div><div style="font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">Your product, minus the agency<span class="dot">.</span></div><div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">names the enemy</div></div>
+      <div><div style="font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">From first sketch to app store<span class="dot">.</span></div><div style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">end-to-end promise</div></div>
+    </div>
+    <div style="border-top: 1px solid var(--line-1); padding-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-muted);">Tagline / kicker candidates</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); border: 1px solid var(--line-1); border-radius: 999px; padding: 6px 12px;">Web studio · California</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); border: 1px solid var(--line-1); border-radius: 999px; padding: 6px 12px;">Websites · Mobile apps · Brand</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); border: 1px solid var(--line-1); border-radius: 999px; padding: 6px 12px;">Fewer meetings. More shipping.</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); border: 1px solid var(--line-1); border-radius: 999px; padding: 6px 12px;">One studio, end to end</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); border: 1px solid var(--line-1); border-radius: 999px; padding: 6px 12px;">Designed and built in California</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Font direction heroes ──────────────────────────────── -->
+<section id="1b" class="frame" style="left: 920px; top: 0;">
+  <a class="badge" href="#1b">1b</a>
+  <span class="fontnote">Schibsted Grotesk + Instrument Serif — current system</span>
+  <div class="hero"><div class="glow"></div>
+    <div class="kicker">Web studio · California</div>
+    <h1 style="font-size: 54px; font-weight: 700; letter-spacing: var(--tracking-display); line-height: 1.05;">Websites and apps, built <em style="font-family: var(--font-display); font-weight: 400; letter-spacing: 0;">properly</em><span class="dot">.</span></h1>
+    <p class="sub">One person directs every project; AI agents handle the build. Fast, focused, no agency overhead.</p>
+    <div class="ctas"><span class="cta">Start a project</span><span class="cta ghost">View work</span></div>
+  </div>
+</section>
+
+<section id="1c" class="frame" style="left: 920px; top: 510px;">
+  <a class="badge" href="#1c">1c</a>
+  <span class="fontnote">Space Grotesk — technical, precise</span>
+  <div class="hero"><div class="glow"></div>
+    <div class="kicker" style="font-family: 'Space Grotesk';">Web studio · California</div>
+    <h1 style="font-family: 'Space Grotesk'; font-size: 54px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.04;">Everything, down to the <span style="color: var(--text-accent);">atom</span><span class="dot" style="color: var(--white-0);">.</span></h1>
+    <p class="sub" style="font-family: 'Space Grotesk';">Small studio, serious software. Websites and mobile apps directed by one person, built by AI agents.</p>
+    <div class="ctas"><span class="cta" style="font-family: 'Space Grotesk';">Start a project</span><span class="cta ghost" style="font-family: 'Space Grotesk';">View work</span></div>
+  </div>
+</section>
+
+<section id="1d" class="frame" style="left: 0; top: 680px;">
+  <a class="badge" href="#1d">1d</a>
+  <span class="fontnote">Archivo 800 — loud, poster-like</span>
+  <div class="hero"><div class="glow"></div>
+    <div class="kicker">Websites · Mobile apps · Brand</div>
+    <h1 style="font-family: 'Archivo'; font-size: 60px; font-weight: 800; letter-spacing: -0.035em; line-height: 0.99; text-transform: uppercase;">We ship what<br>others pitch<span class="dot">.</span></h1>
+    <p class="sub" style="font-family: 'Archivo';">A small California studio shipping web and mobile products, end to end.</p>
+    <div class="ctas"><span class="cta" style="font-family: 'Archivo'; font-weight: 700;">Start a project</span><span class="cta ghost" style="font-family: 'Archivo';">View work</span></div>
+  </div>
+</section>
+
+<section id="1e" class="frame" style="left: 920px; top: 1020px;">
+  <a class="badge" href="#1e">1e</a>
+  <span class="fontnote">Bricolage Grotesque + Newsreader italic — characterful</span>
+  <div class="hero"><div class="glow"></div>
+    <div class="kicker">One studio, end to end</div>
+    <h1 style="font-family: 'Bricolage Grotesque'; font-size: 54px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.04;">Built like it <em style="font-family: 'Newsreader'; font-style: italic; font-weight: 500; letter-spacing: 0;">matters</em><span class="dot">.</span></h1>
+    <p class="sub">Websites and mobile apps from a studio small enough to care about every detail.</p>
+    <div class="ctas"><span class="cta">Start a project</span><span class="cta ghost">View work</span></div>
+  </div>
+</section>
+
+<section id="1f" class="frame" style="left: 0; top: 1190px;">
+  <a class="badge" href="#1f">1f</a>
+  <span class="fontnote">Sora — geometric, modern product feel</span>
+  <div class="hero"><div class="glow"></div>
+    <div class="kicker" style="font-family: 'Sora';">Fewer meetings. More shipping.</div>
+    <h1 style="font-family: 'Sora'; font-size: 50px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.08;">Ideas in.<br>Products out<span class="dot">.</span></h1>
+    <p class="sub" style="font-family: 'Sora';">Your product, minus the agency. Directed by one person, built by AI agents, shipped fast.</p>
+    <div class="ctas"><span class="cta" style="font-family: 'Sora';">Start a project</span><span class="cta ghost" style="font-family: 'Sora';">View work</span></div>
+  </div>
+</section>
+
+<section id="1g" class="frame" style="left: 920px; top: 1530px;">
+  <a class="badge" href="#1g">1g</a>
+  <span class="fontnote">Schibsted + Instrument — brand-name play</span>
+  <div class="hero"><div class="glow"></div>
+    <div class="kicker">Designed and built in California</div>
+    <h1 style="font-size: 54px; font-weight: 700; letter-spacing: var(--tracking-display); line-height: 1.05;">Everything, down to the <em style="font-family: var(--font-display); font-weight: 400; letter-spacing: 0; background: var(--silver-sheen); -webkit-background-clip: text; background-clip: text; color: transparent;">atom</em><span class="dot">.</span></h1>
+    <p class="sub">Ahtomic is a small studio shipping web and mobile products with atomic attention to detail.</p>
+    <div class="ctas"><span class="cta">Start a project</span><span class="cta ghost">View work</span></div>
+  </div>
+</section>
+
+</body></html>

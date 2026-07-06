@@ -1,0 +1,15 @@
+<!-- @dsCard group="Spacing" viewport="700x160" name="Card anatomy" subtitle="Surface step + 1px line, no shadow at rest — border brightens on hover" -->
+<!DOCTYPE html>
+<html><head><link rel="stylesheet" href="../styles.css"></head>
+<body style="padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div style="background:var(--surface-card);border:1px solid var(--line-1);border-radius:var(--radius-lg);padding:20px">
+    <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:var(--tracking-label);text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Rest</div>
+    <div style="font-size:16px;font-weight:600">Card title</div>
+    <p style="margin:4px 0 0;font-size:13px;color:var(--text-secondary)">--surface-card · --line-1 · radius-lg</p>
+  </div>
+  <div style="background:var(--surface-card);border:1px solid var(--line-2);border-radius:var(--radius-lg);padding:20px">
+    <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:var(--tracking-label);text-transform:uppercase;color:var(--text-accent);margin-bottom:8px">Hover</div>
+    <div style="font-size:16px;font-weight:600">Card title <span style="color:var(--text-accent)">→</span></div>
+    <p style="margin:4px 0 0;font-size:13px;color:var(--text-secondary)">border → --line-2 · arrow reveals</p>
+  </div>
+</body></html>

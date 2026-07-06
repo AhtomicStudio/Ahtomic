@@ -1,0 +1,15 @@
+<!-- @dsCard group="Colors" viewport="700x130" name="Lines & status" subtitle="1px borders do the elevation work; status colors stay quiet" -->
+<!DOCTYPE html>
+<html><head><link rel="stylesheet" href="../styles.css"></head>
+<body style="padding:20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="border-top:1px solid var(--line-1);padding-top:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">--line-1 · rest</div>
+    <div style="border-top:1px solid var(--line-2);padding-top:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">--line-2 · hover</div>
+    <div style="border-top:1px solid var(--line-accent);padding-top:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">--line-accent · active</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:flex-start">
+    <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-1);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--positive)"><span style="width:6px;height:6px;border-radius:50%;background:var(--positive)"></span>Live</span>
+    <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-1);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--warning)"><span style="width:6px;height:6px;border-radius:50%;background:var(--warning)"></span>In progress</span>
+    <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-1);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--danger)"><span style="width:6px;height:6px;border-radius:50%;background:var(--danger)"></span>Blocked</span>
+  </div>
+</body></html>

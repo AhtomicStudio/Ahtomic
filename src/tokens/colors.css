@@ -1,0 +1,64 @@
+/* Ahtomic Studio — color tokens. Dark-first. Red is a signal, not a wash. */
+:root {
+  /* Base — near-black neutrals (slightly warm, never blue) */
+  --black-950: #0a0a0b;
+  --black-900: #101012;
+  --black-850: #141416;
+  --black-800: #1a1a1d;
+  --black-700: #232327;
+  --black-600: #2e2e33;
+
+  /* Whites */
+  --white-0: #fafaf8;
+  --white-dim-1: rgba(250, 250, 248, 0.66);
+  --white-dim-2: rgba(250, 250, 248, 0.42);
+  --white-dim-3: rgba(250, 250, 248, 0.24);
+
+  /* Red — vibrant signal red, used with intent */
+  --red-400: #ff6a55;
+  --red-500: #ff3b2f;
+  --red-600: #e02318;
+  --red-700: #a8170f;
+  --red-tint: rgba(255, 59, 47, 0.13);
+  --red-tint-strong: rgba(255, 59, 47, 0.24);
+
+  /* Silver — cool metallic neutrals for secondary voice */
+  --silver-100: #eef0f3;
+  --silver-200: #d9dce2;
+  --silver-300: #bcc1c9;
+  --silver-400: #9aa0ab;
+  --silver-500: #7c828d;
+  --silver-sheen: linear-gradient(180deg, #eef0f3 0%, #b8bdc6 55%, #dfe2e7 100%); /* @kind color */
+
+  /* Lines */
+  --line-1: rgba(217, 220, 226, 0.1);
+  --line-2: rgba(217, 220, 226, 0.2);
+  --line-accent: rgba(255, 59, 47, 0.5);
+
+  /* Semantic — surfaces */
+  --surface-page: var(--black-950);
+  --surface-card: var(--black-850);
+  --surface-raised: var(--black-800);
+  --surface-overlay: rgba(10, 10, 11, 0.72);
+  --surface-inverse: var(--white-0);
+
+  /* Semantic — text */
+  --text-body: var(--white-0);
+  --text-secondary: var(--silver-300);
+  --text-muted: var(--silver-500);
+  --text-disabled: var(--white-dim-3);
+  --text-inverse: var(--black-950);
+  --text-accent: var(--red-400);
+
+  /* Semantic — interactive */
+  --accent: var(--red-500);
+  --accent-hover: var(--red-400);
+  --accent-press: var(--red-600);
+  --accent-subtle: var(--red-tint);
+  --focus-ring: rgba(255, 59, 47, 0.55);
+
+  /* Semantic — status (rare; keep quiet) */
+  --positive: #59a878;
+  --warning: #d9a13c;
+  --danger: var(--red-500);
+}

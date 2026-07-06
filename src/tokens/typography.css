@@ -1,0 +1,35 @@
+/* Ahtomic Studio — type tokens.
+   Grotesk sans carries everything; sharp serif italic is the headline accent;
+   mono is for small technical labels only. */
+:root {
+  --font-sans: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+
+  /* Scale */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 21px;
+  --text-xl: 27px;
+  --text-2xl: 36px;
+  --text-3xl: 52px;
+  --text-4xl: 72px;
+
+  /* Leading */
+  --leading-tight: 1.04;
+  --leading-snug: 1.2;
+  --leading-normal: 1.55;
+
+  /* Tracking */
+  --tracking-tight: -0.02em;
+  --tracking-display: -0.03em;
+  --tracking-label: 0.14em;
+
+  /* Weights (sans) */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+}

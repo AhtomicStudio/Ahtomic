@@ -1,0 +1,203 @@
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+@import "./tokens/effects.css";
+@import "./tokens/base.css";
+@import "./components/components.css";
+
+/* Ambient background — shifts with page + scroll */
+.ambient { position: fixed; inset: -20%; z-index: 0; pointer-events: none; transition: opacity 900ms var(--ease-in-out); will-change: transform; }
+.ambient > div { position: absolute; inset: 0; opacity: 0; transition: opacity 900ms var(--ease-in-out); }
+.ambient .amb-Home     { background: radial-gradient(1000px 480px at 50% 92%, rgba(255,59,47,0.16), transparent 70%), radial-gradient(700px 400px at 12% 0%, rgba(217,220,226,0.045), transparent 70%); }
+.ambient .amb-Work     { background: radial-gradient(900px 500px at 88% 4%, rgba(255,59,47,0.12), transparent 70%), radial-gradient(700px 400px at 0% 80%, rgba(217,220,226,0.04), transparent 70%); }
+.ambient .amb-Services { background: radial-gradient(900px 600px at 2% 30%, rgba(255,59,47,0.12), transparent 70%), radial-gradient(700px 400px at 100% 90%, rgba(217,220,226,0.04), transparent 70%); }
+.ambient .amb-About    { background: radial-gradient(900px 520px at 96% 22%, rgba(255,59,47,0.11), transparent 70%), radial-gradient(800px 400px at 10% 100%, rgba(217,220,226,0.05), transparent 70%); }
+.ambient .amb-Contact  { background: radial-gradient(1100px 520px at 50% 100%, rgba(255,59,47,0.20), transparent 70%); }
+.ambient [data-on="true"] { opacity: 1; }
+
+/* Backdrop texture — grid drawn on canvas so its lines can deform to spell the brand name; grain is pure CSS */
+.backdrop { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.backdrop canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 55%, transparent 90%);
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 55%, transparent 90%);
+}
+.backdrop::after { /* static grain via tiny SVG noise tile */
+  content: ""; position: absolute; inset: 0; opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.86 0 0 0 0 0.89 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Cursor glow — one fixed layer, moved with transform only (compositor, no repaint) */
+.cursor-glow {
+  position: fixed; left: -300px; top: -300px; width: 600px; height: 600px;
+  z-index: 0; pointer-events: none; will-change: transform;
+  background: radial-gradient(circle, rgba(255,59,47,0.055) 0%, rgba(217,220,226,0.025) 35%, transparent 68%);
+  opacity: 0; transition: opacity 500ms var(--ease-out);
+}
+@media (hover: none), (prefers-reduced-motion: reduce) { .cursor-glow { display: none; } }
+
+/* Skip link — visible on keyboard focus only */
+.skip-link {
+  position: fixed; top: 12px; left: 12px; z-index: 100; padding: 10px 16px;
+  background: var(--surface-raised); color: var(--text-body); border: 1px solid var(--line-2);
+  border-radius: 8px; font-size: 14px; font-weight: 500; text-decoration: none;
+  transform: translateY(-64px); opacity: 0; transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out);
+}
+.skip-link:focus-visible { transform: none; opacity: 1; outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Keyboard focus — consistent visible ring on all interactive elements */
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 4px;
+}
+
+/* Back to top — fixed, fades in after scroll */
+.back-to-top {
+  position: fixed; right: 28px; bottom: 28px; z-index: 50;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--surface-raised); color: var(--text-body);
+  border: 1px solid var(--line-2); font-size: 18px; line-height: 1; cursor: pointer;
+  opacity: 0; transform: translateY(12px); pointer-events: none;
+  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out), border-color 140ms var(--ease-out);
+}
+.back-to-top[data-show="true"] { opacity: 1; transform: none; pointer-events: auto; }
+.back-to-top:hover { border-color: var(--line-accent); }
+
+/* Page transition */
+@keyframes pageIn { from { opacity: 0; transform: translateY(14px); } }
+.page-enter { animation: pageIn 420ms var(--ease-out) both; }
+
+/* Scroll reveals — stagger via --d */
+[data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out); transition-delay: var(--d, 0ms); }
+[data-reveal].is-in { opacity: 1; transform: none; }
+
+/* Red period pulse (hero) */
+@keyframes dotPop { 0% { transform: scale(0); } 60% { transform: scale(1.4); } 100% { transform: scale(1); } }
+.dot-pop { display: inline-block; animation: dotPop 600ms var(--ease-out) 500ms both; }
+
+/* Project cards — screenshot pans on hover */
+.ah-projectcard { overflow: hidden; }
+.ah-projectcard__img { transition: object-position 1200ms var(--ease-in-out), transform 600ms var(--ease-out); }
+.ah-projectcard:hover .ah-projectcard__img { object-position: center bottom; transform: scale(1.015); }
+.work-tile img { transition: object-position 1400ms var(--ease-in-out); }
+.work-tile:hover img { object-position: center bottom; }
+
+/* Nav links — underline slides in */
+.nav-link { position: relative; }
+.nav-link::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 1.5px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 240ms var(--ease-out); }
+.nav-link:hover::after, .nav-link[data-active="true"]::after { transform: scaleX(1); }
+
+/* Services rows — index reddens, arrows nudge */
+.svc-row { transition: border-color 140ms var(--ease-out), transform 240ms var(--ease-out); }
+.svc-row:hover { border-color: var(--line-2); transform: translateX(6px); }
+.svc-row .svc-index { transition: color 240ms var(--ease-out); }
+.svc-row:hover .svc-index { color: var(--red-400); }
+.svc-row li span:first-child { transition: transform 240ms var(--ease-out); }
+.svc-row:hover li span:first-child { transform: translateX(4px); }
+
+/* Contact form — red glow while focused */
+.contact-card { transition: box-shadow 420ms var(--ease-out), border-color 420ms var(--ease-out); }
+.contact-card:focus-within { border-color: var(--line-accent); box-shadow: 0 4px 40px rgba(255,59,47,0.17); }
+
+/* About stats — dot slides on hover */
+.stat-card { transition: border-color 140ms var(--ease-out), transform 240ms var(--ease-out); }
+.stat-card:hover { border-color: var(--line-2); transform: translateY(-3px); }
+
+/* Footer mascot — peeks up */
+.thom { transition: transform 240ms var(--ease-out); }
+.thom:hover { transform: translateY(-6px) rotate(-6deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter, .dot-pop { animation: none; }
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+  .ambient, .ambient > div { transition: none; }
+  .backdrop::after { display: none; }
+}
+
+/* Toast stack and other layout overrides */
+.toast-stack { position: fixed; bottom: 24px; right: 24px; z-index: 80; display: flex; flex-direction: column; gap: 10px; }
+
+/* ============================================================
+   Responsive layout layer
+   Pages use these classes instead of fixed inline grids so the
+   site holds up from 360px phones to wide desktop.
+   ============================================================ */
+
+.hero-section { padding: 180px 0 120px; position: relative; overflow: hidden; }
+.page-top { padding-top: 140px; }
+
+.hero-title { font-size: clamp(40px, 9vw, 68px); }
+.page-title { font-size: clamp(34px, 7.5vw, 52px); }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.contact-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 64px; }
+.svc-grid { display: grid; grid-template-columns: 80px 1.2fr 1fr; gap: 24px; align-items: start; }
+.svc-cta { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* Nav — desktop links vs mobile menu */
+.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-burger { display: none; }
+.nav-menu { display: none; }
+
+.footer-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.footer-bottom { display: flex; justify-content: space-between; gap: 16px; }
+
+@media (max-width: 960px) {
+  .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+  .svc-grid { grid-template-columns: 48px 1fr; }
+  .svc-grid ul { grid-column: 2; }
+}
+
+@media (max-width: 720px) {
+  .hero-section { padding: 140px 0 72px; }
+  .page-top { padding-top: 118px; }
+  .grid-2, .grid-3, .svc-grid { grid-template-columns: 1fr; }
+  .svc-grid ul { grid-column: auto; }
+  .svc-cta { flex-direction: column; align-items: flex-start; }
+  .footer-top { flex-direction: column; align-items: flex-start; }
+  .footer-bottom { flex-direction: column; gap: 6px; }
+
+  /* Collapse nav links into a menu */
+  .nav-links { display: none; }
+  .nav-burger {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border: 1px solid var(--line-1); border-radius: 10px;
+    background: transparent; color: var(--text-body); cursor: pointer;
+    transition: border-color 140ms var(--ease-out);
+  }
+  .nav-burger:hover { border-color: var(--line-2); }
+  .nav-menu {
+    display: flex; flex-direction: column; gap: 4px;
+    position: absolute; top: 64px; left: 0; right: 0;
+    padding: 12px var(--container-pad) 16px;
+    background: rgba(10,10,11,0.96); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line-1);
+  }
+  .nav-menu a { font-size: 16px; font-weight: 500; text-decoration: none; padding: 12px 4px; color: var(--text-secondary); border-radius: 8px; }
+  .nav-menu a[data-active="true"] { color: var(--text-body); }
+}
+
+@media (max-width: 640px) {
+  .stats-grid, .form-row { grid-template-columns: 1fr; }
+  .back-to-top { right: 16px; bottom: 16px; }
+}
+
+/* ============================================================
+   Appearance settings (admin-controlled, set on <html>)
+   ============================================================ */
+
+/* Silver sheen on the italic headline word */
+html[data-sheen="true"] .hl-em {
+  background: var(--silver-sheen);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+
+/* Motion: Off — same treatment as prefers-reduced-motion */
+html[data-motion="Off"] .page-enter, html[data-motion="Off"] .dot-pop { animation: none; }
+html[data-motion="Off"] [data-reveal] { opacity: 1; transform: none; transition: none; }
+html[data-motion="Off"] .thom, html[data-motion="Off"] .svc-row, html[data-motion="Off"] .stat-card { transition: none; }
