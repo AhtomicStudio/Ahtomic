@@ -187,14 +187,16 @@ export function WebsiteView() {
     let bandLines = []; // precomputed displacement per line: { y, sub, dys, hits }
     let raf = 0, wordTimer = 0, pulseTimer = 0;
     let wordT0 = -1;    // start time of active word reveal, -1 = idle
+    let wordPhase = "idle";
     let pulses = [];
+    let sparks = [];
     let lastT = 0;
 
     const buildField = () => {
       // Bigger letterform than v1 (160px -> 200px tall, wider box) = legible strokes
       fh = 200;
       fw = Math.min(W * 0.5, 720);
-      fx = Math.max(W * 0.52, W - fw - 48); fy = 72;
+      fx = Math.min(W * 0.52, W - fw - 48); fy = 72;
       const off = document.createElement("canvas");
       off.width = Math.ceil(fw); off.height = fh;
       const c = off.getContext("2d");
@@ -259,25 +261,43 @@ export function WebsiteView() {
       }
     };
 
-    const drawLine = (line, p, alpha) => {
-      ctx.strokeStyle = "rgba(217,220,226," + alpha.toFixed(3) + ")";
-      ctx.lineWidth = 1;
+    // Grey lines keep only a whisper of the warp — the letterform is carried
+    // entirely by the red pass, so the word reads clean instead of noisy.
+    const GREY_WARP = 0.28;
+
+    const strokeHits = (line, p, width, alpha) => {
+      ctx.strokeStyle = "rgba(255,80,68," + alpha.toFixed(3) + ")";
+      ctx.lineWidth = width;
       ctx.beginPath();
-      ctx.moveTo(0, line.y);
-      for (let i = 0; i < line.dys.length; i++) ctx.lineTo(i * STEP, line.y + line.dys[i] * p);
+      let drawing = false;
+      for (let i = 0; i < line.dys.length; i++) {
+        if (line.hits[i] > 0.5) {
+          const px = i * STEP, py = line.y + line.dys[i] * p;
+          if (!drawing) { ctx.moveTo(px, py); drawing = true; } else ctx.lineTo(px, py);
+        } else drawing = false;
+      }
       ctx.stroke();
-      // red trace only where the line actually sits on a glyph stroke
-      if (p > 0.2) {
-        ctx.strokeStyle = "rgba(255,80,68," + (0.6 * p).toFixed(3) + ")";
+    };
+
+    const drawWord = (p) => {
+      if (p <= 0.02) return;
+      // Energize left→right behind a scan front on the way in; fade out whole.
+      const rIn = wordPhase === "in" ? p : 1;
+      const edge = fx - 70 + (fw + 140) * rIn;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, fy - AMP - 12, edge, fh + AMP * 2 + 24);
+      ctx.clip();
+      for (const line of bandLines) strokeHits(line, p, 4.5, 0.10 * p); // soft halo
+      for (const line of bandLines) strokeHits(line, p, 1.6, 0.72 * p); // core stroke
+      ctx.restore();
+      // the scan front itself — a faint vertical beam that leads the reveal
+      if (wordPhase === "in" && p < 0.98) {
+        ctx.strokeStyle = "rgba(255,100,84," + (0.5 * (1 - p)).toFixed(3) + ")";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        let drawing = false;
-        for (let i = 0; i < line.dys.length; i++) {
-          if (line.hits[i] > 0.5) {
-            const px = i * STEP, py = line.y + line.dys[i] * p;
-            if (!drawing) { ctx.moveTo(px, py); drawing = true; } else ctx.lineTo(px, py);
-          } else drawing = false;
-        }
+        ctx.moveTo(edge, fy - AMP - 12);
+        ctx.lineTo(edge, fy + fh + AMP + 12);
         ctx.stroke();
       }
     };
@@ -293,16 +313,22 @@ export function WebsiteView() {
       const top = fy - AMP, bot = fy + fh + AMP;
       ctx.beginPath();
       for (let y = 0.5; y < H; y += CELL) {
-        if (p > 0 && y > top && y < bot) continue; // drawn deformed below
+        if (p > 0 && y > top && y < bot) continue; // drawn (gently) warped below
         ctx.moveTo(0, y); ctx.lineTo(W, y);
       }
       ctx.stroke();
 
       if (p > 0) {
         for (const line of bandLines) {
-          if (line.sub) { if (p > 0.05) drawLine(line, p, 0.045 * p); }
-          else drawLine(line, p, 0.033 + 0.04 * p);
+          if (line.sub) continue; // sub-lines only add red resolution
+          ctx.strokeStyle = "rgba(217,220,226," + (0.033 + 0.02 * p).toFixed(3) + ")";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, line.y);
+          for (let i = 0; i < line.dys.length; i++) ctx.lineTo(i * STEP, line.y + line.dys[i] * p * GREY_WARP);
+          ctx.stroke();
         }
+        drawWord(p);
       }
     };
 
@@ -311,32 +337,44 @@ export function WebsiteView() {
     // random routes; capped so red stays a signal, not a wash.
     const snap = (v) => 0.5 + Math.round((v - 0.5) / CELL) * CELL;
     const makePulse = () => {
+      // Every pulse enters from off-screen and its final leg always runs
+      // off-screen — nothing dies mid-line.
       const pts = [];
-      const horiz = Math.random() < 0.55;
-      // bias spawns toward the upper 2/3 where the canvas mask keeps them visible
-      let x = snap(Math.random() * W);
-      let y = snap(Math.random() * H * 0.66);
-      let dir = Math.random() < 0.5 ? 1 : -1;
-      let axis = horiz ? "x" : "y";
-      if (axis === "x") x = dir === 1 ? -CELL : W + CELL;
-      pts.push({ x, y });
-      const turns = Math.random() < 0.6 ? 1 + Math.floor(Math.random() * 2) : 0;
-      let total = 0;
-      const segs = turns + 1;
-      for (let i = 0; i < segs; i++) {
-        const len = snap(CELL * (2 + Math.random() * (i === segs - 1 ? 9 : 4))) - 0.5;
-        if (axis === "x") x += dir * len; else y += dir * len;
-        pts.push({ x, y });
-        total += len;
-        axis = axis === "x" ? "y" : "x";
-        dir = Math.random() < 0.5 ? 1 : -1;
+      let axis, dir, x, y;
+      if (Math.random() < 0.55) {
+        axis = "x"; dir = Math.random() < 0.5 ? 1 : -1;
+        x = dir === 1 ? -CELL : W + CELL;
+        y = snap(CELL + Math.random() * H * 0.6);
+      } else {
+        axis = "y"; dir = 1;
+        y = -CELL;
+        x = snap(CELL + Math.random() * (W - 2 * CELL));
       }
+      pts.push({ x, y });
+      const turns = Math.random() < 0.7 ? 1 + Math.floor(Math.random() * 3) : 0;
+      for (let i = 0; i < turns; i++) {
+        const len = snap(CELL * (2 + Math.random() * 5));
+        if (axis === "x") x = snap(Math.max(CELL, Math.min(W - CELL, x + dir * len)));
+        else y = snap(Math.max(CELL, Math.min(H * 0.8, y + dir * len)));
+        pts.push({ x, y });
+        axis = axis === "x" ? "y" : "x";
+        // prefer turning toward open space so routes stay visible
+        if (axis === "x") dir = x < W / 2 ? 1 : -1;
+        else dir = y < H / 2 ? 1 : -1;
+        if (Math.random() < 0.3) dir = -dir;
+      }
+      // final leg: exit the viewport with margin so the tail fully leaves too
+      if (axis === "x") x = dir === 1 ? W + CELL * 3 : -CELL * 3;
+      else y = dir === 1 ? H + CELL * 3 : -CELL * 3;
+      pts.push({ x, y });
+      let total = 0;
+      for (let i = 1; i < pts.length; i++) total += Math.abs(pts[i].x - pts[i - 1].x) + Math.abs(pts[i].y - pts[i - 1].y);
       return {
         pts, total,
         dist: 0,
-        speed: 280 + Math.random() * 360,
-        tail: 70 + Math.random() * 90,
-        glow: Math.random() < 0.35, // some pulses run hotter
+        speed: 300 + Math.random() * 380,
+        tail: 80 + Math.random() * 90,
+        glow: Math.random() < 0.4, // some pulses run hotter
       };
     };
 
@@ -358,9 +396,10 @@ export function WebsiteView() {
     const drawPulses = (dt) => {
       for (const pu of pulses) pu.dist += pu.speed * dt;
       pulses = pulses.filter((pu) => pu.dist - pu.tail < pu.total);
+
       for (const pu of pulses) {
         const head = Math.min(pu.dist, pu.total);
-        const maxA = pu.glow ? 0.6 : 0.4;
+        const maxA = pu.glow ? 0.65 : 0.45;
         const N = 9;
         for (let i = 0; i < N; i++) {
           const d0 = pu.dist - pu.tail + (pu.tail * i) / N;
@@ -373,24 +412,59 @@ export function WebsiteView() {
         }
         if (pu.dist <= pu.total) {
           const hp = pointAt(pu, head);
+          // spark emission: brief jagged offshoots perpendicular to travel
+          if (Math.random() < dt * 22 && hp.x > 0 && hp.x < W && hp.y > 0 && hp.y < H) {
+            const prev = pointAt(pu, Math.max(0, head - 3));
+            const dx = hp.x - prev.x, dy = hp.y - prev.y;
+            const mag = Math.hypot(dx, dy) || 1;
+            const nx = -dy / mag, ny = dx / mag;
+            const side = Math.random() < 0.5 ? 1 : -1;
+            sparks.push({
+              x: hp.x, y: hp.y,
+              nx: nx * side, ny: ny * side,
+              len: 5 + Math.random() * 11,
+              life: 0.1 + Math.random() * 0.15,
+              age: 0,
+            });
+          }
+          // flickering head — brightness and size jitter every frame
+          const fl = 0.72 + Math.random() * 0.28;
           ctx.save();
-          if (pu.glow) { ctx.shadowColor = "rgba(255,59,47,0.9)"; ctx.shadowBlur = 10; }
-          ctx.fillStyle = "rgba(255,120,105,0.95)";
-          ctx.beginPath(); ctx.arc(hp.x, hp.y, pu.glow ? 1.8 : 1.3, 0, Math.PI * 2); ctx.fill();
+          if (pu.glow) { ctx.shadowColor = "rgba(255,59,47,0.9)"; ctx.shadowBlur = 12 * fl; }
+          ctx.fillStyle = "rgba(255,130,112," + (0.95 * fl).toFixed(3) + ")";
+          ctx.beginPath(); ctx.arc(hp.x, hp.y, (pu.glow ? 2 : 1.4) * fl, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
         }
+      }
+
+      // sparks: two-segment jagged flick that decays fast; per-frame jitter
+      // makes them shimmer like static discharge
+      for (const sp of sparks) sp.age += dt;
+      sparks = sparks.filter((sp) => sp.age < sp.life);
+      for (const sp of sparks) {
+        const k = 1 - sp.age / sp.life;
+        const jx = (Math.random() - 0.5) * 3, jy = (Math.random() - 0.5) * 3;
+        const mx = sp.x + sp.nx * sp.len * 0.55 + jx, my = sp.y + sp.ny * sp.len * 0.55 + jy;
+        ctx.strokeStyle = "rgba(255,140,120," + (0.7 * k).toFixed(3) + ")";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sp.x, sp.y);
+        ctx.lineTo(mx, my);
+        ctx.lineTo(sp.x + sp.nx * sp.len, sp.y + sp.ny * sp.len);
+        ctx.stroke();
       }
     };
 
     // --- One shared frame loop; runs only while something is animating.
     const ease = (t) => 1 - Math.pow(1 - t, 3);
     const wordP = (now) => {
-      if (wordT0 < 0) return 0;
+      if (wordT0 < 0) { wordPhase = "idle"; return 0; }
       const el = now - wordT0;
-      if (el < 2000) return ease(el / 2000);
-      if (el < 6500) return 1;                      // hold longer (was 3s) — time to read it
-      if (el < 8300) return 1 - ease((el - 6500) / 1800);
+      if (el < 2000) { wordPhase = "in"; return ease(el / 2000); }
+      if (el < 6500) { wordPhase = "hold"; return 1; }   // long hold — time to read it
+      if (el < 8300) { wordPhase = "out"; return 1 - ease((el - 6500) / 1800); }
       wordT0 = -1;
+      wordPhase = "idle";
       wordTimer = setTimeout(startWord, 12000 + Math.random() * 6000);
       return 0;
     };
@@ -400,7 +474,7 @@ export function WebsiteView() {
       lastT = t;
       draw(wordP(t));
       drawPulses(dt);
-      if (wordT0 >= 0 || pulses.length) {
+      if (wordT0 >= 0 || pulses.length || sparks.length) {
         raf = requestAnimationFrame(loop);
       } else {
         raf = 0;
@@ -414,12 +488,13 @@ export function WebsiteView() {
 
     const startWord = () => { wordT0 = performance.now(); ensureLoop(); };
     const spawnPulse = () => {
-      if (pulses.length < 3) {
+      if (pulses.length < 5) {
         pulses.push(makePulse());
-        if (Math.random() < 0.25 && pulses.length < 3) pulses.push(makePulse()); // occasional double-strike
+        if (Math.random() < 0.35 && pulses.length < 5) pulses.push(makePulse()); // double-strike
+        if (Math.random() < 0.12 && pulses.length < 5) pulses.push(makePulse()); // rare burst
       }
       ensureLoop();
-      pulseTimer = setTimeout(spawnPulse, 1800 + Math.random() * 3800);
+      pulseTimer = setTimeout(spawnPulse, 900 + Math.random() * 2400);
     };
 
     const resize = () => {
