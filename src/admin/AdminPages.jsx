@@ -14,7 +14,7 @@ function PagePreview({ page, draft, accent }) {
     <div className="ah-card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--line-1)", display: "flex", alignItems: "center", gap: 6 }}>
         {[0, 1, 2].map((i) => <span key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--line-2)" }}></span>)}
-        <span style={{ marginLeft: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-disabled)" }}>ahtomic.studio{page === "Home" ? "" : "/#" + page.toLowerCase()}</span>
+        <span style={{ marginLeft: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-disabled)" }}>ahtomic.studio{page === "Home" ? "" : "/" + page.toLowerCase()}</span>
       </div>
       <div style={{ padding: "36px 28px 40px", background: "radial-gradient(400px 180px at 50% 115%, " + accent + "26, transparent 70%)" }}>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 10 }}>{p.label}</div>

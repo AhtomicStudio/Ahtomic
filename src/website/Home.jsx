@@ -20,8 +20,8 @@ export function HomePage({ go, data = {}, projects = [] }) {
   // Map local paths to public/src assets
   const getProjImage = (title, imgPath) => {
     if (imgPath) return imgPath;
-    if (title === "CannaPickForMe") return "/assets/portfolio/cannapickforme/home.png";
-    if (title === "A Chalkboard for Two") return "/assets/portfolio/chalkboard/landing.png";
+    if (title === "CannaPickForMe") return "/assets/portfolio/cannapickforme/home.webp";
+    if (title === "A Chalkboard for Two") return "/assets/portfolio/chalkboard/landing.webp";
     return "";
   };
 

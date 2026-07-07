@@ -2,6 +2,8 @@ import React from "react";
 import { Wordmark } from "../components/marketing/Wordmark";
 import { Button } from "../components/forms/Button";
 
+export const pathFor = (p) => (p === "Home" ? "/" : "/" + p.toLowerCase());
+
 export function Nav({ page, go }) {
   const links = ["Home", "Work", "Services", "About"];
   const [open, setOpen] = React.useState(false);
@@ -22,10 +24,10 @@ export function Nav({ page, go }) {
       borderBottom: "1px solid var(--line-1)",
     }}>
       <div style={{ maxWidth: "var(--container-max)", margin: "0 auto", padding: "0 var(--container-pad)", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Wordmark size={18} href="#home" aria-label="Ahtomic Studio — home" onClick={(e) => { e.preventDefault(); goAndClose("Home"); }} />
+        <Wordmark size={18} href="/" aria-label="Ahtomic Studio — home" onClick={(e) => { e.preventDefault(); goAndClose("Home"); }} />
         <div className="nav-links">
           {links.map((l) => (
-            <a key={l} href={`#${l.toLowerCase()}`} className="nav-link" data-active={String(page === l)} aria-current={page === l ? "page" : undefined} onClick={(e) => { e.preventDefault(); go(l); }}
+            <a key={l} href={pathFor(l)} className="nav-link" data-active={String(page === l)} aria-current={page === l ? "page" : undefined} onClick={(e) => { e.preventDefault(); go(l); }}
               style={{
                 textDecoration: "none", fontSize: 14, fontWeight: 500, padding: "8px 12px", borderRadius: 8,
                 color: page === l ? "var(--text-body)" : "var(--text-muted)",
@@ -45,7 +47,7 @@ export function Nav({ page, go }) {
       {open && (
         <div className="nav-menu">
           {[...links, "Contact"].map((l) => (
-            <a key={l} href={`#${l.toLowerCase()}`} data-active={String(page === l)} aria-current={page === l ? "page" : undefined} onClick={(e) => { e.preventDefault(); goAndClose(l); }}>{l}</a>
+            <a key={l} href={pathFor(l)} data-active={String(page === l)} aria-current={page === l ? "page" : undefined} onClick={(e) => { e.preventDefault(); goAndClose(l); }}>{l}</a>
           ))}
         </div>
       )}
@@ -67,9 +69,9 @@ export function Footer({ go, settings = {} }) {
         </div>
         <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
           {["Work", "Services", "About", "Contact"].map((l) => (
-            <a key={l} href={`#${l.toLowerCase()}`} onClick={(e) => { e.preventDefault(); go(l); }} style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none", padding: "6px 0" }}>{l}</a>
+            <a key={l} href={pathFor(l)} onClick={(e) => { e.preventDefault(); go(l); }} style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none", padding: "6px 0" }}>{l}</a>
           ))}
-          <img src="/assets/mascot/thom.png" alt="Thom" title="Thom says hi" className="thom" style={{ height: 36, width: "auto", opacity: 0.9 }} />
+          <img src="/assets/mascot/thom.webp" alt="Thom" title="Thom says hi" className="thom" style={{ height: 36, width: "auto", opacity: 0.9 }} />
         </div>
       </div>
       <div style={{ borderTop: "1px solid var(--line-1)" }}>

@@ -1,5 +1,6 @@
 import React from "react";
-import { Nav, Footer, BackToTop, Page } from "./shared";
+import { Button } from "../components/forms/Button";
+import { Nav, Footer, BackToTop, Page, pathFor } from "./shared";
 import { HomePage } from "./Home";
 import { WorkPage } from "./Work";
 import { ServicesPage } from "./Services";
@@ -26,22 +27,38 @@ const DEFAULT_CONTENT = {
   settings: { email: "ahtomicstudio@gmail.com", location: "California · Remote-friendly", replyTime: "Replies within 2 days", footerTagline: "Websites and mobile apps, designed and built.", copyright: "© 2026 Ahtomic Studio", siteTitle: "Ahtomic Studio — Websites and apps, built properly", siteDescription: "A small web studio shipping websites and mobile apps. One person directs every project; AI agents handle the build." },
 };
 
+const PAGES = ["Home", "Work", "Services", "About", "Contact"];
+
+// Resolve the current URL to a page name; null means 404.
+// Legacy hash URLs (/#work) still resolve so old links keep working.
+const fromLocation = () => {
+  const h = window.location.hash.replace("#", "").toLowerCase();
+  const hashPage = PAGES.find((p) => p.toLowerCase() === h);
+  if (hashPage) return hashPage;
+  const path = window.location.pathname.toLowerCase().replace(/\/+$/, "") || "/";
+  if (path === "/") return "Home";
+  return PAGES.find((p) => "/" + p.toLowerCase() === path) || null;
+};
+
 export function WebsiteView() {
-  const PAGES = ["Home", "Work", "Services", "About", "Contact"];
-  
-  const fromHash = () => {
-    const h = window.location.hash.replace("#", "").toLowerCase();
-    return PAGES.find((p) => p.toLowerCase() === h) || "Home";
-  };
-  
-  const [page, setPage] = React.useState(fromHash);
+  const [page, setPage] = React.useState(fromLocation);
   const [siteData, setSiteData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
   const go = (p) => {
-    if (p !== page) window.location.hash = p.toLowerCase();
+    if (p !== page) {
+      window.history.pushState({}, "", pathFor(p));
+      setPage(p);
+    }
     window.scrollTo(0, 0);
   };
+
+  // Normalize legacy hash URLs to real paths once on mount
+  React.useEffect(() => {
+    if (window.location.hash && page) {
+      window.history.replaceState({}, "", pathFor(page));
+    }
+  }, []);
 
   // Load public data on mount
   React.useEffect(() => {
@@ -70,28 +87,37 @@ export function WebsiteView() {
     fetchPublicData();
   }, []);
 
+  // Browser back/forward
   React.useEffect(() => {
-    const onHash = () => {
-      setPage(fromHash());
+    const onPop = () => {
+      setPage(fromLocation());
       window.scrollTo(0, 0);
     };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  // Update browser titles dynamically based on settings
+  // Per-page title, meta description, and canonical URL
   React.useEffect(() => {
     if (!siteData) return;
     const settings = siteData.settings || {};
-    document.title = page === "Home" 
+    const brand = settings.siteTitle ? settings.siteTitle.split(" — ")[0] : "Ahtomic Studio";
+    document.title = page === "Home"
       ? (settings.siteTitle || "Ahtomic Studio — Websites and apps, built properly")
-      : `${page} — ${settings.siteTitle ? settings.siteTitle.split(" — ")[0] : "Ahtomic Studio"}`;
-    
-    // Update meta description if possible
+      : page
+        ? `${page} — ${brand}`
+        : `Page not found — ${brand}`;
+
+    // Home uses the site description; other pages use their intro copy
+    const pageData = page ? (siteData.pages || {})[page] : null;
+    const desc = page === "Home"
+      ? (settings.siteDescription || "")
+      : (pageData && pageData.intro) || settings.siteDescription || "";
     const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc && settings.siteDescription) {
-      metaDesc.setAttribute("content", settings.siteDescription);
-    }
+    if (metaDesc && desc) metaDesc.setAttribute("content", desc);
+
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical && page) canonical.setAttribute("href", "https://ahtomic.studio" + (page === "Home" ? "/" : pathFor(page)));
   }, [page, siteData]);
 
   // Reveal elements on scroll
@@ -336,7 +362,7 @@ export function WebsiteView() {
   };
 
   return (
-    <div data-screen-label={page} style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div data-screen-label={page || "404"} style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <a href="#main-content" className="skip-link" onClick={(e) => { e.preventDefault(); const m = document.getElementById("main-content"); if (m) m.focus(); }}>Skip to content</a>
       
       {a.grid && (
@@ -366,12 +392,34 @@ export function WebsiteView() {
 
       <Nav page={page} go={go} />
       
-      <main id="main-content" tabIndex={-1} key={page} className="page-enter" style={{ flex: 1, position: "relative", zIndex: 1, outline: "none" }}>
-        {pages[page]}
+      <main id="main-content" tabIndex={-1} key={page || "404"} className="page-enter" style={{ flex: 1, position: "relative", zIndex: 1, outline: "none" }}>
+        {page ? pages[page] : <NotFound go={go} />}
       </main>
       
       <Footer go={go} settings={siteData.settings} />
       <BackToTop />
     </div>
+  );
+}
+
+function NotFound({ go }) {
+  return (
+    <Page>
+      <div className="page-top" style={{ maxWidth: 640, paddingBottom: 40 }}>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-muted)" }}>
+          404 — page not found
+        </div>
+        <h1 className="page-title" style={{ margin: "24px 0 0", fontWeight: 700, letterSpacing: "var(--tracking-display)", lineHeight: 1.05 }}>
+          Nothing at this address<span style={{ color: "var(--accent)" }}>.</span>
+        </h1>
+        <p style={{ margin: "20px 0 0", fontSize: 16, lineHeight: 1.7, color: "var(--text-secondary)" }}>
+          The page moved, or it never existed. Thom checked twice.
+        </p>
+        <div className="btn-row" style={{ marginTop: 36, alignItems: "center" }}>
+          <Button variant="primary" size="lg" onClick={() => go("Home")}>Back to home</Button>
+          <img src="/assets/mascot/thom.webp" alt="Thom the mascot, shrugging" className="thom" style={{ height: 44, width: "auto" }} />
+        </div>
+      </div>
+    </Page>
   );
 }
