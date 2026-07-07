@@ -170,27 +170,35 @@ export function WebsiteView() {
     };
   }, []);
 
-  // Canvas deformation grid logic
+  // Canvas grid: word-warp reveal ("Ahtomic") + electrical pulses along the lines
   React.useEffect(() => {
     const canvas = document.getElementById("grid-canvas");
     if (!canvas || !siteData) return;
-    
+
     const a = siteData.appearance || {};
     if (!a.grid) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches || a.motion === "Off";
+    const animate = !reduced && a.motion !== "Subtle";
     const ctx = canvas.getContext("2d");
-    const CELL = 72, AMP = 26;
+    const CELL = 72, AMP = 30, STEP = 2, SUB = CELL / 6;
+    const BASE = "rgba(217,220,226,0.033)";
     let W = 0, H = 0, dpr = 1, field = null, fw = 0, fh = 0, fx = 0, fy = 0;
-    let raf = 0, timer = 0;
+    let bandLines = []; // precomputed displacement per line: { y, sub, dys, hits }
+    let raf = 0, wordTimer = 0, pulseTimer = 0;
+    let wordT0 = -1;    // start time of active word reveal, -1 = idle
+    let pulses = [];
+    let lastT = 0;
 
     const buildField = () => {
-      fw = Math.min(W * 0.38, 560); fh = 160;
-      fx = W * 0.56; fy = 100;
+      // Bigger letterform than v1 (160px -> 200px tall, wider box) = legible strokes
+      fh = 200;
+      fw = Math.min(W * 0.5, 720);
+      fx = Math.max(W * 0.52, W - fw - 48); fy = 72;
       const off = document.createElement("canvas");
       off.width = Math.ceil(fw); off.height = fh;
       const c = off.getContext("2d");
-      c.font = "700 " + Math.floor(fh * 0.72) + "px 'Space Grotesk', sans-serif";
+      c.font = "700 " + Math.floor(fh * 0.7) + "px 'Space Grotesk', sans-serif";
       c.textAlign = "center"; c.textBaseline = "middle";
       c.fillStyle = "#fff";
       c.fillText("Ahtomic", fw / 2, fh / 2);
@@ -204,76 +212,214 @@ export function WebsiteView() {
       return field.data[(py * field.width + px) * 4 + 3] / 255;
     };
 
+    // Precompute how each band line bends. Instead of "push away from ink"
+    // (v1 — smeared the glyphs), each point is attracted to the weighted
+    // CENTER of nearby ink, so lines converge onto stroke centerlines and
+    // the word reads cleanly when several lines bunch onto it.
+    const computeLine = (y) => {
+      const n = Math.floor(W / STEP) + 1;
+      const dys = new Float32Array(n), hits = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const x = i * STEP;
+        let wsum = 0, csum = 0;
+        for (let s = -AMP; s <= AMP; s += 2) {
+          const val = ink(x, y + s);
+          if (val > 0.3) {
+            // distance falloff: lines sitting on/near a stroke snap to its
+            // center; lines further away bend gently instead of spiking
+            const w = val * (1 - 0.8 * Math.pow(Math.abs(s) / AMP, 2));
+            wsum += w; csum += s * w;
+          }
+        }
+        if (wsum > 0) dys[i] = csum / wsum;
+      }
+      // small box blur along x so bends flow instead of kinking
+      const sm = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        let acc = 0, cnt = 0;
+        for (let k = -2; k <= 2; k++) { const j = i + k; if (j >= 0 && j < n) { acc += dys[j]; cnt++; } }
+        sm[i] = acc / cnt;
+      }
+      // red only where the bent line actually lands on a glyph stroke —
+      // keeps the red the letterform itself, not the warp artifacts
+      for (let i = 0; i < n; i++) hits[i] = ink(i * STEP, y + sm[i]);
+      return { y, dys: sm, hits };
+    };
+
+    const buildBand = () => {
+      bandLines = [];
+      if (!field) return;
+      const top = fy - AMP, bot = fy + fh + AMP;
+      for (let y = 0.5; y < H; y += CELL) {
+        if (y > top && y < bot) bandLines.push({ sub: false, ...computeLine(y) });
+      }
+      for (let y = 0.5 + SUB; y < H; y += SUB) {
+        if (Math.abs((y - 0.5) % CELL) < 1) continue;
+        if (y > top && y < bot) bandLines.push({ sub: true, ...computeLine(y) });
+      }
+    };
+
+    const drawLine = (line, p, alpha) => {
+      ctx.strokeStyle = "rgba(217,220,226," + alpha.toFixed(3) + ")";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, line.y);
+      for (let i = 0; i < line.dys.length; i++) ctx.lineTo(i * STEP, line.y + line.dys[i] * p);
+      ctx.stroke();
+      // red trace only where the line actually sits on a glyph stroke
+      if (p > 0.2) {
+        ctx.strokeStyle = "rgba(255,80,68," + (0.6 * p).toFixed(3) + ")";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        let drawing = false;
+        for (let i = 0; i < line.dys.length; i++) {
+          if (line.hits[i] > 0.5) {
+            const px = i * STEP, py = line.y + line.dys[i] * p;
+            if (!drawing) { ctx.moveTo(px, py); drawing = true; } else ctx.lineTo(px, py);
+          } else drawing = false;
+        }
+        ctx.stroke();
+      }
+    };
+
     const draw = (p) => {
       ctx.clearRect(0, 0, W, H);
       ctx.lineWidth = 1;
-      
-      // Vertical lines
-      ctx.strokeStyle = "rgba(217,220,226,0.033)";
+      ctx.strokeStyle = BASE;
       ctx.beginPath();
       for (let x = 0.5; x < W; x += CELL) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
       ctx.stroke();
-      
-      // Horizontal lines
-      const bandTop = fy - AMP, bandBot = fy + fh + AMP;
-      const pull = (x, y) => {
-        let dy = 0, hit = 0;
-        for (let s = -AMP; s <= AMP; s += 4) {
-          const val = ink(x, y + s);
-          if (val > 0.35) {
-            const q = s * val;
-            if (Math.abs(q) > Math.abs(dy)) dy = q;
-            hit = Math.max(hit, val);
-          }
-        }
-        return { dy, hit };
-      };
-      
-      const drawDeformed = (y, alpha) => {
-        ctx.strokeStyle = "rgba(217,220,226," + alpha.toFixed(3) + ")";
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        for (let x = 0; x <= W; x += 4) ctx.lineTo(x, y + pull(x, y).dy * p);
-        ctx.stroke();
-        
-        if (p > 0.15) {
-          ctx.strokeStyle = "rgba(255,80,68," + (0.42 * p).toFixed(3) + ")";
-          ctx.beginPath();
-          let drawing = false;
-          for (let x = 0; x <= W; x += 4) {
-            const { dy, hit } = pull(x, y);
-            if (hit) {
-              if (!drawing) {
-                ctx.moveTo(x, y + dy * p);
-                drawing = true;
-              } else {
-                ctx.lineTo(x, y + dy * p);
-              }
-            } else {
-              drawing = false;
-            }
-          }
-          ctx.stroke();
-        }
-      };
 
+      const top = fy - AMP, bot = fy + fh + AMP;
+      ctx.beginPath();
       for (let y = 0.5; y < H; y += CELL) {
-        if (p > 0 && y > bandTop && y < bandBot) {
-          drawDeformed(y, 0.033 + 0.035 * p);
-          continue;
-        }
-        ctx.strokeStyle = "rgba(217,220,226,0.033)";
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        if (p > 0 && y > top && y < bot) continue; // drawn deformed below
+        ctx.moveTo(0, y); ctx.lineTo(W, y);
       }
+      ctx.stroke();
 
-      // Sub-lines in band
-      if (p > 0.05) {
-        const SUB = CELL / 4;
-        for (let y = 0.5 + SUB; y < H; y += SUB) {
-          if (Math.abs((y - 0.5) % CELL) < 1) continue;
-          if (y > bandTop && y < bandBot) drawDeformed(y, 0.05 * p);
+      if (p > 0) {
+        for (const line of bandLines) {
+          if (line.sub) { if (p > 0.05) drawLine(line, p, 0.045 * p); }
+          else drawLine(line, p, 0.033 + 0.04 * p);
         }
       }
+    };
+
+    // --- Electrical pulses: a bright head with a fading tail that runs along
+    // grid lines, occasionally turning 90° at intersections. Random timing,
+    // random routes; capped so red stays a signal, not a wash.
+    const snap = (v) => 0.5 + Math.round((v - 0.5) / CELL) * CELL;
+    const makePulse = () => {
+      const pts = [];
+      const horiz = Math.random() < 0.55;
+      // bias spawns toward the upper 2/3 where the canvas mask keeps them visible
+      let x = snap(Math.random() * W);
+      let y = snap(Math.random() * H * 0.66);
+      let dir = Math.random() < 0.5 ? 1 : -1;
+      let axis = horiz ? "x" : "y";
+      if (axis === "x") x = dir === 1 ? -CELL : W + CELL;
+      pts.push({ x, y });
+      const turns = Math.random() < 0.6 ? 1 + Math.floor(Math.random() * 2) : 0;
+      let total = 0;
+      const segs = turns + 1;
+      for (let i = 0; i < segs; i++) {
+        const len = snap(CELL * (2 + Math.random() * (i === segs - 1 ? 9 : 4))) - 0.5;
+        if (axis === "x") x += dir * len; else y += dir * len;
+        pts.push({ x, y });
+        total += len;
+        axis = axis === "x" ? "y" : "x";
+        dir = Math.random() < 0.5 ? 1 : -1;
+      }
+      return {
+        pts, total,
+        dist: 0,
+        speed: 280 + Math.random() * 360,
+        tail: 70 + Math.random() * 90,
+        glow: Math.random() < 0.35, // some pulses run hotter
+      };
+    };
+
+    const pointAt = (pulse, d) => {
+      if (d <= 0) d = 0;
+      let acc = 0;
+      for (let i = 1; i < pulse.pts.length; i++) {
+        const a0 = pulse.pts[i - 1], a1 = pulse.pts[i];
+        const len = Math.abs(a1.x - a0.x) + Math.abs(a1.y - a0.y);
+        if (d <= acc + len) {
+          const t = len === 0 ? 0 : (d - acc) / len;
+          return { x: a0.x + (a1.x - a0.x) * t, y: a0.y + (a1.y - a0.y) * t };
+        }
+        acc += len;
+      }
+      return pulse.pts[pulse.pts.length - 1];
+    };
+
+    const drawPulses = (dt) => {
+      for (const pu of pulses) pu.dist += pu.speed * dt;
+      pulses = pulses.filter((pu) => pu.dist - pu.tail < pu.total);
+      for (const pu of pulses) {
+        const head = Math.min(pu.dist, pu.total);
+        const maxA = pu.glow ? 0.6 : 0.4;
+        const N = 9;
+        for (let i = 0; i < N; i++) {
+          const d0 = pu.dist - pu.tail + (pu.tail * i) / N;
+          const d1 = pu.dist - pu.tail + (pu.tail * (i + 1)) / N;
+          if (d1 <= 0 || d0 >= pu.total) continue;
+          const p0 = pointAt(pu, d0), p1 = pointAt(pu, Math.min(d1, pu.total));
+          ctx.strokeStyle = "rgba(255,80,68," + (maxA * ((i + 1) / N)).toFixed(3) + ")";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+        }
+        if (pu.dist <= pu.total) {
+          const hp = pointAt(pu, head);
+          ctx.save();
+          if (pu.glow) { ctx.shadowColor = "rgba(255,59,47,0.9)"; ctx.shadowBlur = 10; }
+          ctx.fillStyle = "rgba(255,120,105,0.95)";
+          ctx.beginPath(); ctx.arc(hp.x, hp.y, pu.glow ? 1.8 : 1.3, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+      }
+    };
+
+    // --- One shared frame loop; runs only while something is animating.
+    const ease = (t) => 1 - Math.pow(1 - t, 3);
+    const wordP = (now) => {
+      if (wordT0 < 0) return 0;
+      const el = now - wordT0;
+      if (el < 2000) return ease(el / 2000);
+      if (el < 6500) return 1;                      // hold longer (was 3s) — time to read it
+      if (el < 8300) return 1 - ease((el - 6500) / 1800);
+      wordT0 = -1;
+      wordTimer = setTimeout(startWord, 12000 + Math.random() * 6000);
+      return 0;
+    };
+
+    const loop = (t) => {
+      const dt = Math.min((t - lastT) / 1000, 0.05);
+      lastT = t;
+      draw(wordP(t));
+      drawPulses(dt);
+      if (wordT0 >= 0 || pulses.length) {
+        raf = requestAnimationFrame(loop);
+      } else {
+        raf = 0;
+        draw(0);
+      }
+    };
+
+    const ensureLoop = () => {
+      if (!raf) { lastT = performance.now(); raf = requestAnimationFrame(loop); }
+    };
+
+    const startWord = () => { wordT0 = performance.now(); ensureLoop(); };
+    const spawnPulse = () => {
+      if (pulses.length < 3) {
+        pulses.push(makePulse());
+        if (Math.random() < 0.25 && pulses.length < 3) pulses.push(makePulse()); // occasional double-strike
+      }
+      ensureLoop();
+      pulseTimer = setTimeout(spawnPulse, 1800 + Math.random() * 3800);
     };
 
     const resize = () => {
@@ -282,39 +428,23 @@ export function WebsiteView() {
       canvas.width = W * dpr; canvas.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       buildField();
+      buildBand();
       draw(0);
-    };
-
-    const ease = (t) => 1 - Math.pow(1 - t, 3);
-    const cycle = () => {
-      const t0 = performance.now();
-      const step = (t) => {
-        const el = t - t0;
-        let p;
-        if (el < 2000) p = ease(el / 2000);
-        else if (el < 5000) p = 1;
-        else if (el < 7000) p = 1 - ease((el - 5000) / 2000);
-        else {
-          draw(0);
-          raf = 0;
-          timer = setTimeout(cycle, 14000);
-          return;
-        }
-        draw(p);
-        raf = requestAnimationFrame(step);
-      };
-      raf = requestAnimationFrame(step);
     };
 
     resize();
     window.addEventListener("resize", resize);
-    
-    // The deforming-grid signature animation only runs on "Full" motion
-    if (!reduced && a.motion !== "Off" && a.motion !== "Subtle") {
-      const kickoff = () => { timer = setTimeout(cycle, 3500); };
+
+    // Word reveal + pulses only on "Full" motion
+    if (animate) {
+      const kickoff = () => {
+        wordTimer = setTimeout(startWord, 3500);
+        pulseTimer = setTimeout(spawnPulse, 1600);
+      };
       if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(() => {
           buildField();
+          buildBand();
           draw(0);
           kickoff();
         });
@@ -322,11 +452,12 @@ export function WebsiteView() {
         kickoff();
       }
     }
-    
+
     return () => {
       window.removeEventListener("resize", resize);
       if (raf) cancelAnimationFrame(raf);
-      if (timer) clearTimeout(timer);
+      if (wordTimer) clearTimeout(wordTimer);
+      if (pulseTimer) clearTimeout(pulseTimer);
     };
   }, [siteData]);
 
