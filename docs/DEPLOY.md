@@ -8,8 +8,8 @@ The app runs in two modes automatically:
 
 ## 1. Firebase project (~10 min)
 
-1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project** → name it `ahtomic-studio`. Google Analytics optional (skip it; you can add later).
-2. **Add a Web App**: Project overview → `</>` (Web) icon → nickname `ahtomic-site` → register. **Copy the `firebaseConfig` values** it shows — these are your six `VITE_FIREBASE_*` env values.
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project** → name it `ahtomic-studio`. Enable Google Analytics if you want it — it's what powers `VITE_FIREBASE_MEASUREMENT_ID` below.
+2. **Add a Web App**: Project overview → `</>` (Web) icon → nickname `ahtomic-site` → register. **Copy the `firebaseConfig` values** it shows — these are your `VITE_FIREBASE_*` env values (six required, plus `measurementId` if Analytics is enabled — see `.env.example`).
 3. **Enable Auth**: Build → Authentication → Get started → Sign-in method → **Email/Password** → Enable.
 4. **Create your admin user**: Authentication → Users → **Add user**. Use your real email + a strong password. *This is the only account that should ever exist* — the security rules treat any signed-in user as the admin. Do not enable self-service sign-up flows.
 5. **Enable Firestore**: Build → Firestore Database → Create database → **Production mode** (rules below will open exactly what's needed) → region `us-west1` or `us-central1`.
@@ -24,7 +24,7 @@ The app runs in two modes automatically:
 
 ## 2. Local smoke test (~5 min)
 
-1. Copy `.env.example` to `.env` and fill in the six values from step 1.2.
+1. Copy `.env.example` to `.env` and fill in the values from step 1.2.
 2. `npm run dev` → open http://localhost:3000
 3. Visit `/admin`, log in with your real admin account, edit something, **Save draft**, then **Publish**.
 4. Reload the public site — your edit should show. Submit the contact form and confirm a doc appears in Firestore → `inquiries`.
@@ -37,7 +37,7 @@ The app runs in two modes automatically:
    git push -u origin master
    ```
 2. [vercel.com](https://vercel.com) → Add New → Project → import the repo. Framework preset: **Vite** (auto-detected). Build command `npm run build`, output `dist` (defaults).
-3. **Environment variables**: add all six `VITE_FIREBASE_*` values (Production + Preview).
+3. **Environment variables**: add all the `VITE_FIREBASE_*` values from your `.env` (Production + Preview) — including `MEASUREMENT_ID` if you set it, or Analytics silently won't initialize.
 4. Deploy. Test the `*.vercel.app` URL: pages, `/admin` login, publish flow, contact form.
 5. **Domain**: Project → Settings → Domains → add your purchased domain (already on Vercel, so it attaches instantly; pick the apex + `www` redirect).
 6. **Authorize the domain in Firebase Auth**: Firebase Console → Authentication → Settings → Authorized domains → add your domain (and the `*.vercel.app` URL). Login on the live site fails without this.

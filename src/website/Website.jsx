@@ -23,7 +23,7 @@ const DEFAULT_CONTENT = {
     { title: "Snapacat", meta: "Mobile app · In progress", tags: ["Mobile"], live: false, visible: true, blurb: "Log photos and notes of neighborhood cats; the app turns each cat into a sprite you can collect." },
     { title: "BudSnap", meta: "Mobile app · In progress", tags: ["Mobile"], live: false, visible: true, blurb: "A living Pokédex for cannabis. A fun way of logging for a forgetful demographic." },
   ],
-  appearance: { accent: "#ff3b2f", glow: true, grid: true, grain: true, cursorGlow: true, sheen: true, motion: "Full" },
+  appearance: { accent: "#ff3b2f", glow: true, grid: true, grain: true, sheen: true, motion: "Full" },
   settings: { email: "ahtomicstudio@gmail.com", location: "California · Remote-friendly", replyTime: "Replies within 2 days", footerTagline: "Websites and mobile apps, designed and built.", copyright: "© 2026 Ahtomic Studio", siteTitle: "Ahtomic Studio — Websites and apps, built properly", siteDescription: "A small web studio shipping websites and mobile apps. One person directs every project; AI agents handle the build." },
 };
 
@@ -120,9 +120,11 @@ export function WebsiteView() {
     if (canonical && page) canonical.setAttribute("href", "https://ahtomic.studio" + (page === "Home" ? "/" : pathFor(page)));
   }, [page, siteData]);
 
-  // Reveal elements on scroll
+  // Reveal elements on scroll. Watches #main-content for DOM changes so
+  // elements added later by in-page state (e.g. the Work page's tab filter)
+  // get observed too — otherwise they're stuck at opacity:0 forever, since
+  // this effect only re-runs on page/loading changes, not on every re-render.
   React.useEffect(() => {
-    const els = document.querySelectorAll("[data-reveal]");
     const io = new IntersectionObserver((entries) => {
       entries.forEach((en) => {
         if (en.isIntersecting) {
@@ -131,8 +133,18 @@ export function WebsiteView() {
         }
       });
     }, { threshold: 0.12 });
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+
+    const observeNew = (root) => {
+      root.querySelectorAll("[data-reveal]:not(.is-in)").forEach((el) => io.observe(el));
+    };
+
+    const main = document.getElementById("main-content");
+    observeNew(document);
+
+    const mo = main ? new MutationObserver(() => observeNew(main)) : null;
+    if (mo && main) mo.observe(main, { childList: true, subtree: true });
+
+    return () => { io.disconnect(); if (mo) mo.disconnect(); };
   }, [page, loading]);
 
   // Ambient parallax scrolling effect
@@ -145,30 +157,7 @@ export function WebsiteView() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Cursor glow effect
-  React.useEffect(() => {
-    const glow = document.getElementById("cursor-glow");
-    if (!glow || window.matchMedia("(hover: none)").matches) return;
-    let tx = 0, ty = 0, x = 0, y = 0, raf = 0, seen = false;
-    const tick = () => {
-      x += (tx - x) * 0.12; y += (ty - y) * 0.12;
-      glow.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-      raf = (Math.abs(tx - x) > 0.5 || Math.abs(ty - y) > 0.5) ? requestAnimationFrame(tick) : 0;
-    };
-    const onMove = (e) => {
-      tx = e.clientX; ty = e.clientY;
-      if (!seen) { seen = true; x = tx; y = ty; glow.style.opacity = "1"; }
-      if (!raf) raf = requestAnimationFrame(tick);
-    };
-    const onLeave = () => { glow.style.opacity = "0"; };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    document.documentElement.addEventListener("pointerleave", onLeave);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      document.documentElement.removeEventListener("pointerleave", onLeave);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
+
 
   // Canvas grid: word-warp reveal ("Ahtomic") + electrical pulses along the lines
   React.useEffect(() => {
@@ -181,26 +170,48 @@ export function WebsiteView() {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches || a.motion === "Off";
     const animate = !reduced && a.motion !== "Subtle";
     const ctx = canvas.getContext("2d");
-    const CELL = 72, AMP = 30, STEP = 2, SUB = CELL / 6;
+    const CELL = 72;
     const BASE = "rgba(217,220,226,0.033)";
     let W = 0, H = 0, dpr = 1, field = null, fw = 0, fh = 0, fx = 0, fy = 0;
-    let bandLines = []; // precomputed displacement per line: { y, sub, dys, hits }
+    let particles = []; // each: { tx, ty, gridX, gridY, delay, exitDelay, orbitRad, orbitSpeed, orbitAngle, mx, my, mvx, mvy, color }
     let raf = 0, wordTimer = 0, pulseTimer = 0;
     let wordT0 = -1;    // start time of active word reveal, -1 = idle
-    let wordPhase = "idle";
+    let wordPhase = "idle", lastWordPhase = "idle";
     let pulses = [];
     let sparks = [];
+    let textPulses = []; // electricity pulses running on the letter particle paths
     let lastT = 0;
 
+    // Real-time pointer tracking variables for logo hover intensification
+    let mouseX = -10000, mouseY = -10000;
+
     const buildField = () => {
-      // Bigger letterform than v1 (160px -> 200px tall, wider box) = legible strokes
-      fh = 200;
-      fw = Math.min(W * 0.5, 720);
-      fx = Math.min(W * 0.52, W - fw - 48); fy = 72;
+      // The offscreen canvas that captures the letterform must always be
+      // sized to fit the FULL measured word — a fixed font size on a fixed
+      // narrow canvas silently cropped "Ahtomic" to a centered slice that
+      // read as "ton" on mobile. Font size scales with viewport width, and
+      // if the measured word still overflows the available space, we shrink
+      // the font until it fits, so the whole word is always captured.
+      const margin = 16;
+      const maxFieldWidth = Math.max(160, W - margin * 2);
+      const measure = document.createElement("canvas").getContext("2d");
+      let fontPx = Math.round(Math.max(40, Math.min(140, W * 0.11)));
+      measure.font = "700 " + fontPx + "px 'Space Grotesk', sans-serif";
+      let textWidth = measure.measureText("Ahtomic").width;
+      if (textWidth > maxFieldWidth) {
+        fontPx = Math.max(24, Math.floor(fontPx * (maxFieldWidth / textWidth)));
+        measure.font = "700 " + fontPx + "px 'Space Grotesk', sans-serif";
+        textWidth = measure.measureText("Ahtomic").width;
+      }
+
+      fh = Math.round(fontPx * 1.5);
+      fw = Math.ceil(textWidth + 24); // small pad so glyph edges never touch the canvas edge
+      fx = Math.max(margin, Math.min(W * 0.52, W - fw - margin));
+      fy = 72;
       const off = document.createElement("canvas");
-      off.width = Math.ceil(fw); off.height = fh;
+      off.width = fw; off.height = fh;
       const c = off.getContext("2d");
-      c.font = "700 " + Math.floor(fh * 0.7) + "px 'Space Grotesk', sans-serif";
+      c.font = "700 " + fontPx + "px 'Space Grotesk', sans-serif";
       c.textAlign = "center"; c.textBaseline = "middle";
       c.fillStyle = "#fff";
       c.fillText("Ahtomic", fw / 2, fh / 2);
@@ -214,121 +225,354 @@ export function WebsiteView() {
       return field.data[(py * field.width + px) * 4 + 3] / 255;
     };
 
-    // Precompute how each band line bends. Instead of "push away from ink"
-    // (v1 — smeared the glyphs), each point is attracted to the weighted
-    // CENTER of nearby ink, so lines converge onto stroke centerlines and
-    // the word reads cleanly when several lines bunch onto it.
-    const computeLine = (y) => {
-      const n = Math.floor(W / STEP) + 1;
-      const dys = new Float32Array(n), hits = new Float32Array(n);
-      for (let i = 0; i < n; i++) {
-        const x = i * STEP;
-        let wsum = 0, csum = 0;
-        for (let s = -AMP; s <= AMP; s += 2) {
-          const val = ink(x, y + s);
-          if (val > 0.3) {
-            // distance falloff: lines sitting on/near a stroke snap to its
-            // center; lines further away bend gently instead of spiking
-            const w = val * (1 - 0.8 * Math.pow(Math.abs(s) / AMP, 2));
-            wsum += w; csum += s * w;
+    const buildBand = () => {
+      particles = [];
+      textPulses = [];
+      if (!field) return;
+
+      // Scan offscreen canvas to extract potential pixel coordinates (denser scan for higher count)
+      const candidates = [];
+      for (let x = 0; x < fw; x += 1) {
+        for (let y = 0; y < fh; y += 1) {
+          const val = ink(x + fx, y + fy);
+          if (val > 0.35) {
+            candidates.push({ x, y });
           }
         }
-        if (wsum > 0) dys[i] = csum / wsum;
       }
-      // small box blur along x so bends flow instead of kinking
-      const sm = new Float32Array(n);
-      for (let i = 0; i < n; i++) {
-        let acc = 0, cnt = 0;
-        for (let k = -2; k <= 2; k++) { const j = i + k; if (j >= 0 && j < n) { acc += dys[j]; cnt++; } }
-        sm[i] = acc / cnt;
+
+      // Sample a dense subset (800 particles) for rich, high-fidelity letter definitions
+      const numParticles = Math.min(800, candidates.length);
+      const step = candidates.length / numParticles;
+      for (let i = 0; i < numParticles; i++) {
+        const candidate = candidates[Math.floor(i * step)];
+        if (!candidate) continue;
+
+        const tx = candidate.x + fx;
+        const ty = candidate.y + fy;
+
+        // nearest grid intersection
+        const gridX = 0.5 + Math.round((tx - 0.5) / CELL) * CELL;
+        const gridY = 0.5 + Math.round((ty - 0.5) / CELL) * CELL;
+
+        // Progressive left-to-right sweep stagger delay
+        const staggerX = (tx - fx) / fw;
+        const flowDelay = staggerX * 2.5 + Math.random() * 0.3; // sweeps from left to right (max 2.8s)
+        const exitDelay = (1.0 - staggerX) * 0.9 + Math.random() * 0.2; // exits in reverse (max 1.1s)
+
+        // Emergence travel speed: 220px/s (majestic controlled crawl)
+        const dist = Math.hypot(tx - gridX, ty - gridY);
+        const flowSpeed = 220;
+        const flowDuration = Math.max(0.15, dist / flowSpeed);
+
+        // Orbit physics: electrical vibration
+        const orbitRad = 0.8 + Math.random() * 2.2;
+        const orbitSpeed = (1.0 + Math.random() * 1.6) * (Math.random() < 0.5 ? 1 : -1);
+        const orbitAngle = Math.random() * Math.PI * 2;
+
+        particles.push({
+          tx, ty,
+          gridX, gridY,
+          flowDelay,
+          exitDelay,
+          flowDuration,
+          orbitRad,
+          orbitSpeed,
+          orbitAngle,
+          color: Math.random() < 0.25 ? "rgba(255,140,120," : "rgba(255,80,68,"
+        });
       }
-      // red only where the bent line actually lands on a glyph stroke —
-      // keeps the red the letterform itself, not the warp artifacts
-      for (let i = 0; i < n; i++) hits[i] = ink(i * STEP, y + sm[i]);
-      return { y, dys: sm, hits };
     };
 
-    const buildBand = () => {
-      bandLines = [];
-      if (!field) return;
-      const top = fy - AMP, bot = fy + fh + AMP;
-      for (let y = 0.5; y < H; y += CELL) {
-        if (y > top && y < bot) bandLines.push({ sub: false, ...computeLine(y) });
+    // Calculate dynamic coords for a single particle based on elapsed time, orbit, and scroll Y
+    const getOffsets = (pt, el, dt, currentScrollY) => {
+      const ease = (val) => 1 - Math.pow(1 - val, 3);
+
+      const ox = Math.cos(pt.orbitAngle) * pt.orbitRad;
+      const oy = Math.sin(pt.orbitAngle) * pt.orbitRad;
+
+      // Base target coordinates of particle
+      let rx = pt.tx + ox;
+      let ry = pt.ty + oy;
+      let opacity = 1;
+      let scale = 1;
+
+      if (wordPhase === "in") {
+        // Waterfall cascade: emergence speed matching grid pulses
+        const localEl = el - pt.flowDelay * 1000;
+        let lp = localEl / (pt.flowDuration * 1000);
+        lp = Math.max(0, Math.min(1, lp));
+        const easeLP = ease(lp);
+        
+        // Sagging waterfall curve: add vertical curve drag offset that decays as easeLP -> 1
+        rx = pt.gridX + (pt.tx + ox - pt.gridX) * easeLP;
+        ry = pt.gridY + (pt.ty + oy - pt.gridY) * easeLP + Math.sin((1.0 - easeLP) * Math.PI) * 45;
+        scale = easeLP;
+        opacity = Math.min(1.0, easeLP * 2.0);
+      } else if (wordPhase === "out") {
+        // Synchronized retreat: slide particles back to their spawning intersections
+        const exitStart = pt.exitDelay * 1000;
+        const exitDuration = Math.max(200, 2400 - exitStart - 200); // completed 200ms before phase end
+        const localEl = (el - 11800) - exitStart;
+        let lp = 1.0 - (localEl / exitDuration);
+        lp = Math.max(0, Math.min(1, lp));
+        const easeLP = ease(lp);
+        
+        rx = pt.gridX + (pt.tx + ox - pt.gridX) * easeLP;
+        ry = pt.gridY + (pt.ty + oy - pt.gridY) * easeLP;
+        scale = easeLP;
+        opacity = Math.min(1.0, easeLP * 4.0); // opacity stays high, shrinks at the very end
       }
-      for (let y = 0.5 + SUB; y < H; y += SUB) {
-        if (Math.abs((y - 0.5) % CELL) < 1) continue;
-        if (y > top && y < bot) bandLines.push({ sub: true, ...computeLine(y) });
-      }
+
+      // Subtract currentScrollY to anchor the text logo layout relative to scroll
+      return { rx, ry: ry - currentScrollY, opacity, scale };
     };
 
-    // Grey lines keep only a whisper of the warp — the letterform is carried
-    // entirely by the red pass, so the word reads clean instead of noisy.
-    const GREY_WARP = 0.28;
+    // Calculate dynamic coords for all particles based on phase & orbit physics
+    const getParticleCoords = (el, dt, currentScrollY) => {
+      const activeCoords = [];
 
-    const strokeHits = (line, p, width, alpha) => {
-      ctx.strokeStyle = "rgba(255,80,68," + alpha.toFixed(3) + ")";
-      ctx.lineWidth = width;
-      ctx.beginPath();
-      let drawing = false;
-      for (let i = 0; i < line.dys.length; i++) {
-        if (line.hits[i] > 0.5) {
-          const px = i * STEP, py = line.y + line.dys[i] * p;
-          if (!drawing) { ctx.moveTo(px, py); drawing = true; } else ctx.lineTo(px, py);
-        } else drawing = false;
+      for (const pt of particles) {
+        // Orbit speed scales based on hold state vs transitions
+        const speedMult = wordPhase === "hold" ? 2.5 : 1.0;
+        pt.orbitAngle += pt.orbitSpeed * dt * speedMult;
+
+        const coords = getOffsets(pt, el, dt, currentScrollY);
+        activeCoords.push({ rx: coords.rx, ry: coords.ry, opacity: coords.opacity, scale: coords.scale, color: pt.color, pt });
       }
-      ctx.stroke();
+
+      return activeCoords;
     };
 
-    const drawWord = (p) => {
-      if (p <= 0.02) return;
-      // Energize left→right behind a scan front on the way in; fade out whole.
-      const rIn = wordPhase === "in" ? p : 1;
-      const edge = fx - 70 + (fw + 140) * rIn;
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, fy - AMP - 12, edge, fh + AMP * 2 + 24);
-      ctx.clip();
-      for (const line of bandLines) strokeHits(line, p, 4.5, 0.10 * p); // soft halo
-      for (const line of bandLines) strokeHits(line, p, 1.6, 0.72 * p); // core stroke
-      ctx.restore();
-      // the scan front itself — a faint vertical beam that leads the reveal
-      if (wordPhase === "in" && p < 0.98) {
-        ctx.strokeStyle = "rgba(255,100,84," + (0.5 * (1 - p)).toFixed(3) + ")";
-        ctx.lineWidth = 1.5;
+    // Render the word "Ahtomic" as a vibrating constellation of electrons and chemical arcs
+    const drawWord = (p, dt, el, currentScrollY) => {
+      if (p <= 0.01 || !particles.length) return;
+
+      const coords = getParticleCoords(el, dt, currentScrollY);
+
+      // 1. Draw sharp, zigzag lightning discharges between nearby coordinates
+      for (let i = 0; i < coords.length; i++) {
+        const p1 = coords[i];
+        const maxChecks = Math.min(coords.length, i + 12);
+        for (let j = i + 1; j < maxChecks; j++) {
+          const p2 = coords[j];
+          const dx = p1.rx - p2.rx;
+          const dy = p1.ry - p2.ry;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < 576) { // distance < 24px
+            const dist = Math.sqrt(distSq);
+            const alpha = (1 - dist / 24) * 0.55 * p1.opacity * p2.opacity * p;
+            
+            // Render sharp flickering zigzag discharge path
+            if (Math.random() < 0.75) {
+              ctx.strokeStyle = "rgba(255,140,120," + alpha.toFixed(3) + ")";
+              ctx.lineWidth = 0.6;
+              ctx.beginPath();
+              ctx.moveTo(p1.rx, p1.ry);
+              
+              // 3-segment zigzag pathing
+              const segments = 3;
+              for (let s = 1; s < segments; s++) {
+                const frac = s / segments;
+                const px = p1.rx + (p2.rx - p1.rx) * frac;
+                const py = p1.ry + (p2.ry - p1.ry) * frac;
+                
+                // Perpendicular vector for offset
+                const nx = -dy / (dist || 1);
+                const ny = dx / (dist || 1);
+                const jitter = (Math.random() - 0.5) * 4.2;
+                
+                ctx.lineTo(px + nx * jitter, py + ny * jitter);
+              }
+              ctx.lineTo(p2.rx, p2.ry);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // 2. Draw glowing charge nodes (matching the grid pulse sizes)
+      for (const p1 of coords) {
+        const alpha = p * p1.opacity;
+        const scale = p1.scale ?? 1.0;
+        if (alpha <= 0.01 || scale <= 0.01) continue;
+
+        const fl = 0.72 + Math.random() * 0.28; // flicker
+        const isHotNode = p1.pt.orbitRad > 1.8;
+
+        ctx.save();
+        if (isHotNode && alpha > 0.15) {
+          ctx.shadowColor = "rgba(255,59,47,0.9)";
+          ctx.shadowBlur = 8 * fl * scale;
+        }
+
+        ctx.fillStyle = p1.color + (0.95 * alpha * fl).toFixed(3) + ")";
         ctx.beginPath();
-        ctx.moveTo(edge, fy - AMP - 12);
-        ctx.lineTo(edge, fy + fh + AMP + 12);
-        ctx.stroke();
+        const baseRadius = isHotNode ? 1.2 : 0.7; // extremely small particles
+        ctx.arc(p1.rx, p1.ry, baseRadius * fl * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
     };
 
-    const draw = (p) => {
+    // Spawn a path-following electrical current running through adjacent particles
+    const spawnTextPulse = () => {
+      if (!particles.length || textPulses.length >= 6) return;
+
+      let curr = particles[Math.floor(Math.random() * particles.length)];
+      const path = [curr];
+      const pathLen = 8 + Math.floor(Math.random() * 5);
+      const visited = new Set([curr]);
+
+      for (let i = 0; i < pathLen; i++) {
+        let best = null;
+        let minDistSq = Infinity;
+        // Fast local search: check adjacent indexes in the particle array
+        const startIdx = Math.max(0, particles.indexOf(curr) - 20);
+        const endIdx = Math.min(particles.length, startIdx + 40);
+
+        for (let j = startIdx; j < endIdx; j++) {
+          const pt = particles[j];
+          if (visited.has(pt)) continue;
+          const dx = curr.tx - pt.tx;
+          const dy = curr.ty - pt.ty;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < minDistSq && distSq < 900) { // snap window: 30px
+            minDistSq = distSq;
+            best = pt;
+          }
+        }
+
+        if (best) {
+          path.push(best);
+          visited.add(best);
+          curr = best;
+        } else {
+          break;
+        }
+      }
+
+      if (path.length >= 4) {
+        textPulses.push({
+          path,
+          progress: 0,
+          speed: 12 + Math.random() * 8, // node hops per second
+          glow: Math.random() < 0.4,
+          tail: 3 + Math.floor(Math.random() * 3)
+        });
+      }
+    };
+
+    // Draw active electric currents traveling along constellation pathways
+    const drawTextPulses = (dt, p, el, currentScrollY, isNearLogo) => {
+      if (p <= 0.05 || !textPulses.length) return;
+
+      for (const tp of textPulses) {
+        // Speed up the pulse flow when the user is hovering over/near the logo
+        const currentSpeed = tp.speed * (isNearLogo ? 2.5 : 1.0);
+        tp.progress += currentSpeed * dt;
+        if (tp.progress >= tp.path.length) continue;
+
+        const pIndex = Math.floor(tp.progress);
+        const pFrac = tp.progress - pIndex;
+
+        const headNode = tp.path[pIndex];
+        const nextNode = tp.path[Math.min(tp.path.length - 1, pIndex + 1)];
+
+        const headOffsets = getOffsets(headNode, el, dt, currentScrollY);
+        const nextOffsets = getOffsets(nextNode, el, dt, currentScrollY);
+
+        const hx = headOffsets.rx + (nextOffsets.rx - headOffsets.rx) * pFrac;
+        const hy = headOffsets.ry + (nextOffsets.ry - headOffsets.ry) * pFrac;
+
+        // Draw tail backwards along the traversed constellation path
+        const tailLength = tp.tail;
+        ctx.lineWidth = tp.glow ? (isNearLogo ? 3.0 : 2.2) : (isNearLogo ? 2.0 : 1.4);
+
+        for (let i = 0; i < tailLength; i++) {
+          const idx = pIndex - i;
+          if (idx < 0) break;
+
+          const node0 = tp.path[idx];
+          const node1 = tp.path[Math.max(0, idx - 1)];
+
+          const o0 = getOffsets(node0, el, dt, currentScrollY);
+          const o1 = getOffsets(node1, el, dt, currentScrollY);
+
+          const alpha = (1 - i / tailLength) * p * o0.opacity;
+          ctx.strokeStyle = tp.glow
+            ? "rgba(255,200,160," + (alpha * 0.85).toFixed(3) + ")"
+            : "rgba(255,100,84," + (alpha * 0.75).toFixed(3) + ")";
+
+          ctx.beginPath();
+          ctx.moveTo(o0.rx, o0.ry);
+          ctx.lineTo(o1.rx, o1.ry);
+          ctx.stroke();
+        }
+
+        // Draw flickering head charge
+        const fl = 0.75 + Math.random() * 0.25;
+        ctx.save();
+        if (tp.glow) {
+          ctx.shadowColor = "rgba(255,59,47,0.9)";
+          ctx.shadowBlur = (isNearLogo ? 18 : 12) * fl;
+        }
+        ctx.fillStyle = tp.glow
+          ? "rgba(255,230,190," + (0.95 * fl * p).toFixed(3) + ")"
+          : "rgba(255,130,112," + (0.95 * fl * p).toFixed(3) + ")";
+        ctx.beginPath();
+        // Slightly larger head during logo hover intensity
+        const baseRadius = tp.glow ? 3.0 : 1.8;
+        const radius = isNearLogo ? baseRadius * 1.5 : baseRadius;
+        ctx.arc(hx, hy, radius * fl, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Emit sharp electrical sparks from the head coordinate (with logo flag)
+        const sparkChance = isNearLogo ? dt * 85 : dt * 30;
+        if (Math.random() < sparkChance) {
+          const angle = Math.random() * Math.PI * 2;
+          sparks.push({
+            x: hx,
+            y: hy + currentScrollY, // store absolute coordinate space Y
+            logo: true,
+            nx: Math.cos(angle),
+            ny: Math.sin(angle),
+            len: 3 + Math.random() * 5, // very short length (3px to 8px)
+            life: 0.05 + Math.random() * 0.06, // extremely short lifetime
+            age: 0
+          });
+        }
+      }
+
+      textPulses = textPulses.filter(tp => tp.progress < tp.path.length);
+    };
+
+    const draw = (p, dt, el, currentScrollY, isNearLogo) => {
+      // 1. Clear and draw grid lines. Half-pixel offset keeps 1px lines crisp
+      // instead of anti-aliased/blurry (a canvas rendering fundamental).
       ctx.clearRect(0, 0, W, H);
       ctx.lineWidth = 1;
       ctx.strokeStyle = BASE;
       ctx.beginPath();
       for (let x = 0.5; x < W; x += CELL) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (let y = 0.5; y < H; y += CELL) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
       ctx.stroke();
 
-      const top = fy - AMP, bot = fy + fh + AMP;
-      ctx.beginPath();
-      for (let y = 0.5; y < H; y += CELL) {
-        if (p > 0 && y > top && y < bot) continue; // drawn (gently) warped below
-        ctx.moveTo(0, y); ctx.lineTo(W, y);
+      // 2. Draw sparks (flickering electric crackles)
+      drawSparks(currentScrollY);
+
+      // 3. Draw background grid pulses
+      drawGridPulses(dt);
+
+      // 4. Draw text pulses (electrical currents traveling on the letters)
+      if (p > 0.05) {
+        drawTextPulses(dt, p, el, currentScrollY, isNearLogo);
       }
-      ctx.stroke();
 
+      // 5. Draw word (lightning connections + particle nodes on top)
       if (p > 0) {
-        for (const line of bandLines) {
-          if (line.sub) continue; // sub-lines only add red resolution
-          ctx.strokeStyle = "rgba(217,220,226," + (0.033 + 0.02 * p).toFixed(3) + ")";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(0, line.y);
-          for (let i = 0; i < line.dys.length; i++) ctx.lineTo(i * STEP, line.y + line.dys[i] * p * GREY_WARP);
-          ctx.stroke();
-        }
-        drawWord(p);
+        drawWord(p, dt, el, currentScrollY);
       }
     };
 
@@ -393,10 +637,7 @@ export function WebsiteView() {
       return pulse.pts[pulse.pts.length - 1];
     };
 
-    const drawPulses = (dt) => {
-      for (const pu of pulses) pu.dist += pu.speed * dt;
-      pulses = pulses.filter((pu) => pu.dist - pu.tail < pu.total);
-
+    const drawGridPulses = (dt) => {
       for (const pu of pulses) {
         const head = Math.min(pu.dist, pu.total);
         const maxA = pu.glow ? 0.65 : 0.45;
@@ -412,8 +653,8 @@ export function WebsiteView() {
         }
         if (pu.dist <= pu.total) {
           const hp = pointAt(pu, head);
-          // spark emission: brief jagged offshoots perpendicular to travel
-          if (Math.random() < dt * 22 && hp.x > 0 && hp.x < W && hp.y > 0 && hp.y < H) {
+          // spark emission: brief jagged offshoots perpendicular to travel (sharp electric)
+          if (Math.random() < dt * 25 && hp.x > 0 && hp.x < W && hp.y > 0 && hp.y < H) {
             const prev = pointAt(pu, Math.max(0, head - 3));
             const dx = hp.x - prev.x, dy = hp.y - prev.y;
             const mag = Math.hypot(dx, dy) || 1;
@@ -421,9 +662,10 @@ export function WebsiteView() {
             const side = Math.random() < 0.5 ? 1 : -1;
             sparks.push({
               x: hp.x, y: hp.y,
+              logo: false, // background grid spark
               nx: nx * side, ny: ny * side,
-              len: 5 + Math.random() * 11,
-              life: 0.1 + Math.random() * 0.15,
+              len: 3 + Math.random() * 5, // very short
+              life: 0.05 + Math.random() * 0.06, // extremely short
               age: 0,
             });
           }
@@ -436,21 +678,27 @@ export function WebsiteView() {
           ctx.restore();
         }
       }
+    };
 
-      // sparks: two-segment jagged flick that decays fast; per-frame jitter
-      // makes them shimmer like static discharge
-      for (const sp of sparks) sp.age += dt;
-      sparks = sparks.filter((sp) => sp.age < sp.life);
+    const drawSparks = (currentScrollY) => {
+      // Draw sharp, jagged, high-frequency static electric discharges
       for (const sp of sparks) {
         const k = 1 - sp.age / sp.life;
-        const jx = (Math.random() - 0.5) * 3, jy = (Math.random() - 0.5) * 3;
-        const mx = sp.x + sp.nx * sp.len * 0.55 + jx, my = sp.y + sp.ny * sp.len * 0.55 + jy;
-        ctx.strokeStyle = "rgba(255,140,120," + (0.7 * k).toFixed(3) + ")";
-        ctx.lineWidth = 1;
+        const jx = (Math.random() - 0.5) * 2;
+        const jy = (Math.random() - 0.5) * 2;
+
+        const drawY = sp.logo ? sp.y - currentScrollY : sp.y;
+
+        // Mid point for jagged crackle
+        const mx = sp.x + sp.nx * sp.len * 0.5 + jx;
+        const my = drawY + sp.ny * sp.len * 0.5 + jy;
+
+        ctx.strokeStyle = "rgba(255,150,130," + (0.85 * k).toFixed(3) + ")";
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.moveTo(sp.x, sp.y);
+        ctx.moveTo(sp.x, drawY);
         ctx.lineTo(mx, my);
-        ctx.lineTo(sp.x + sp.nx * sp.len, sp.y + sp.ny * sp.len);
+        ctx.lineTo(sp.x + sp.nx * sp.len, drawY + sp.ny * sp.len);
         ctx.stroke();
       }
     };
@@ -458,27 +706,82 @@ export function WebsiteView() {
     // --- One shared frame loop; runs only while something is animating.
     const ease = (t) => 1 - Math.pow(1 - t, 3);
     const wordP = (now) => {
-      if (wordT0 < 0) { wordPhase = "idle"; return 0; }
+      if (wordT0 < 0) {
+        if (lastWordPhase !== "idle") {
+          lastWordPhase = "idle";
+          wordPhase = "idle";
+        }
+        return 0;
+      }
       const el = now - wordT0;
-      if (el < 2000) { wordPhase = "in"; return ease(el / 2000); }
-      if (el < 6500) { wordPhase = "hold"; return 1; }   // long hold — time to read it
-      if (el < 8300) { wordPhase = "out"; return 1 - ease((el - 6500) / 1800); }
-      wordT0 = -1;
-      wordPhase = "idle";
-      wordTimer = setTimeout(startWord, 12000 + Math.random() * 6000);
-      return 0;
+      let p = 0;
+      let phase = "idle";
+
+      // Slower, more majestic left-to-right sweep reveal timing (4.8 seconds reveal)
+      if (el < 4800) {
+        phase = "in";
+        p = ease(el / 4800);
+      } else if (el < 11800) {
+        phase = "hold";
+        p = 1;
+      } else if (el < 14200) {
+        phase = "out";
+        p = 1 - ease((el - 11800) / 2400);
+      } else {
+        wordT0 = -1;
+        phase = "idle";
+        p = 0;
+        wordTimer = setTimeout(startWord, 14000 + Math.random() * 6000);
+      }
+
+      if (phase !== lastWordPhase) {
+        wordPhase = phase;
+        lastWordPhase = phase;
+      }
+
+      return p;
     };
 
     const loop = (t) => {
-      const dt = Math.min((t - lastT) / 1000, 0.05);
+      const dt = Math.max(0, Math.min((t - lastT) / 1000, 0.05));
       lastT = t;
-      draw(wordP(t));
-      drawPulses(dt);
-      if (wordT0 >= 0 || pulses.length || sparks.length) {
+      const currentScrollY = window.scrollY;
+      const el = wordT0 >= 0 ? t - wordT0 : 0;
+      const p = wordP(t);
+
+      // Check if mouse hover is near the logo area
+      const isNearLogo = Math.abs(mouseX - (fx + fw / 2)) < (fw / 2 + 60) && 
+                         Math.abs(mouseY - (fy - currentScrollY + fh / 2)) < (fh / 2 + 40);
+
+      // Update background grid pulses distance
+      for (const pu of pulses) pu.dist += pu.speed * dt;
+      pulses = pulses.filter((pu) => pu.dist - pu.tail < pu.total);
+
+      // Update sparks age
+      for (const sp of sparks) {
+        sp.age += dt;
+      }
+      sparks = sparks.filter((sp) => sp.age < sp.life);
+
+      // Render all layers back-to-front in a single clear draw call
+      draw(p, dt, el, currentScrollY, isNearLogo);
+
+      // Electricity pulses travel along atomic pathways only during hold/reveal phases
+      if (p > 0.05) {
+        const spawnChance = isNearLogo ? dt * 25.0 : dt * 6.5;
+        const maxPulses = isNearLogo ? 15 : 6;
+        if (wordPhase === "hold" && Math.random() < spawnChance && textPulses.length < maxPulses) {
+          spawnTextPulse();
+        }
+      } else {
+        textPulses = [];
+      }
+
+      if (wordT0 >= 0 || pulses.length || sparks.length || textPulses.length) {
         raf = requestAnimationFrame(loop);
       } else {
         raf = 0;
-        draw(0);
+        draw(0, dt, 0, currentScrollY, false);
       }
     };
 
@@ -486,7 +789,11 @@ export function WebsiteView() {
       if (!raf) { lastT = performance.now(); raf = requestAnimationFrame(loop); }
     };
 
-    const startWord = () => { wordT0 = performance.now(); ensureLoop(); };
+    const startWord = () => {
+      wordT0 = performance.now();
+      textPulses = [];
+      ensureLoop();
+    };
     const spawnPulse = () => {
       if (pulses.length < 5) {
         pulses.push(makePulse());
@@ -504,11 +811,25 @@ export function WebsiteView() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       buildField();
       buildBand();
-      draw(0);
+      draw(0, 0, 0, window.scrollY);
+    };
+
+    const onPointerMove = (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      ensureLoop();
+    };
+
+    const onPointerLeave = () => {
+      mouseX = -10000;
+      mouseY = -10000;
+      ensureLoop();
     };
 
     resize();
     window.addEventListener("resize", resize);
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onPointerLeave);
 
     // Word reveal + pulses only on "Full" motion
     if (animate) {
@@ -520,7 +841,7 @@ export function WebsiteView() {
         document.fonts.ready.then(() => {
           buildField();
           buildBand();
-          draw(0);
+          draw(0, 0, 0, window.scrollY);
           kickoff();
         });
       } else {
@@ -530,6 +851,8 @@ export function WebsiteView() {
 
     return () => {
       window.removeEventListener("resize", resize);
+      window.removeEventListener("pointermove", onPointerMove);
+      document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       if (raf) cancelAnimationFrame(raf);
       if (wordTimer) clearTimeout(wordTimer);
       if (pulseTimer) clearTimeout(pulseTimer);
@@ -583,10 +906,6 @@ export function WebsiteView() {
             <div key={p} className={`amb-${p}`} data-on={String(p === page)}></div>
           ))}
         </div>
-      )}
-      
-      {a.cursorGlow && (
-        <div className="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
       )}
 
       {a.grain && (

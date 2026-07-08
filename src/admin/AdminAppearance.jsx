@@ -68,7 +68,6 @@ export function AppearanceEditor({ draft, update }) {
           <Switch label="Red glow behind page content" checked={a.glow} onChange={setBool("glow")} />
           <Switch label="Faint background grid" checked={a.grid} onChange={setBool("grid")} />
           <Switch label="Film grain texture" checked={a.grain} onChange={setBool("grain")} />
-          <Switch label="Cursor glow (follows the mouse)" checked={a.cursorGlow} onChange={setBool("cursorGlow")} />
           <Switch label="Silver shine on the italic headline word" checked={a.sheen} onChange={setBool("sheen")} />
         </div>
       </SectionCard>

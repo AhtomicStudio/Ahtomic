@@ -24,7 +24,7 @@ const DEFAULT_CONTENT = {
     { title: "Snapacat", meta: "Mobile app · In progress", tags: ["Mobile"], live: false, visible: true, blurb: "Log photos and notes of neighborhood cats; the app turns each cat into a sprite you can collect." },
     { title: "BudSnap", meta: "Mobile app · In progress", tags: ["Mobile"], live: false, visible: true, blurb: "A living Pokédex for cannabis. A fun way of logging for a forgetful demographic." },
   ],
-  appearance: { accent: "#ff3b2f", glow: true, grid: true, grain: true, cursorGlow: true, sheen: true, motion: "Full" },
+  appearance: { accent: "#ff3b2f", glow: true, grid: true, grain: true, sheen: true, motion: "Full" },
   settings: { email: "ahtomicstudio@gmail.com", location: "California · Remote-friendly", replyTime: "Replies within 2 days", footerTagline: "Websites and mobile apps, designed and built.", copyright: "© 2026 Ahtomic Studio", siteTitle: "Ahtomic Studio — Websites and apps, built properly", siteDescription: "A small web studio shipping websites and mobile apps. One person directs every project; AI agents handle the build." },
 };
 

@@ -9,3 +9,13 @@ Thumbs.db
 .firebase/
 firebase-debug.log
 .claude/settings.local.json
+# Logs
+logs
+npm-debug.log*
+# Local env variables
+.env.development.local
+.env.test.local
+.env.production.local
+# IDE / OS files
+.vscode/
+.idea/
