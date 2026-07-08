@@ -1,4 +1,6 @@
 import React from "react";
+import { m } from "motion/react";
+import { revealProps } from "./motion";
 import { Button } from "../components/forms/Button";
 import { SectionLabel } from "../components/marketing/SectionLabel";
 import { ProjectCard } from "../components/marketing/ProjectCard";
@@ -30,39 +32,39 @@ export function HomePage({ go, data = {}, projects = [] }) {
       <header className="hero-section">
         <Page>
           <div style={{ position: "relative", maxWidth: 780 }}>
-            <div data-reveal style={{ "--d": "0ms", fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 20 }}>
+            <m.div {...revealProps(0)} style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: "var(--tracking-label)", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 20 }}>
               {p.label}
-            </div>
-            <h1 data-reveal className="hero-title" style={{ "--d": "90ms", margin: 0, fontWeight: 700, letterSpacing: "var(--tracking-display)", lineHeight: "var(--leading-tight)" }}>
+            </m.div>
+            <m.h1 {...revealProps(90)} className="hero-title" style={{ margin: 0, fontWeight: 700, letterSpacing: "var(--tracking-display)", lineHeight: "var(--leading-tight)" }}>
               {p.headline}{" "}
               {p.headlineAccent && (
                 <span style={{ color: "var(--text-accent)" }}>{p.headlineAccent}</span>
               )}
               <span className="dot-pop">.</span>
-            </h1>
-            <p data-reveal style={{ "--d": "180ms", margin: "24px 0 0", fontSize: 18, lineHeight: 1.6, color: "var(--text-secondary)", maxWidth: 520 }}>
+            </m.h1>
+            <m.p {...revealProps(180)} style={{ margin: "24px 0 0", fontSize: 18, lineHeight: 1.6, color: "var(--text-secondary)", maxWidth: 520 }}>
               {p.intro}
-            </p>
-            <div data-reveal className="btn-row" style={{ "--d": "260ms", marginTop: 36 }}>
+            </m.p>
+            <m.div {...revealProps(260)} className="btn-row" style={{ marginTop: 36 }}>
               <Button variant="primary" size="lg" onClick={() => go("Contact")}>{p.cta || "Start a project"}</Button>
               <Button variant="secondary" size="lg" onClick={() => go("Work")}>View work</Button>
-            </div>
+            </m.div>
           </div>
         </Page>
       </header>
 
       <Page>
-        <div data-reveal><SectionLabel index="01">Selected work</SectionLabel></div>
+        <m.div {...revealProps(0)}><SectionLabel index="01">Selected work</SectionLabel></m.div>
         <div className="grid-2" style={{ marginTop: 32 }}>
           {visibleProjects.map((proj, i) => (
-            <div key={proj.title} data-reveal style={{ "--d": `${(i + 1) * 80}ms` }}>
+            <m.div key={proj.title} {...revealProps((i + 1) * 80)}>
               <ProjectCard
                 title={proj.title}
                 meta={proj.meta}
                 image={getProjImage(proj.title, proj.image)}
                 onClick={(e) => { e.preventDefault(); go("Work"); }}
               />
-            </div>
+            </m.div>
           ))}
           {visibleProjects.length === 0 && (
             <div style={{ gridColumn: "1 / -1", padding: "40px 0", color: "var(--text-muted)", fontSize: 14 }}>
@@ -77,19 +79,19 @@ export function HomePage({ go, data = {}, projects = [] }) {
 
       <Page>
         <div style={{ marginTop: 96 }}>
-          <div data-reveal><SectionLabel index="02">What we do</SectionLabel></div>
+          <m.div {...revealProps(0)}><SectionLabel index="02">What we do</SectionLabel></m.div>
           <div className="grid-3" style={{ marginTop: 32 }}>
             {[
               ["Websites", "Marketing sites and web apps. Fast, accessible, maintained."],
               ["Mobile apps", "iOS and Android products, from concept to store."],
               ["Design & brand", "Interfaces, identities, and the systems behind them."],
             ].map(([t, d], i) => (
-              <div key={t} data-reveal style={{ "--d": `${i * 90}ms` }}>
+              <m.div key={t} {...revealProps(i * 90)}>
                 <Card padding="lg" interactive style={{ height: "100%" }}>
                   <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t}</div>
                   <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.55 }}>{d}</p>
                 </Card>
-              </div>
+              </m.div>
             ))}
           </div>
         </div>

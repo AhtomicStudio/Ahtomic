@@ -1,4 +1,6 @@
 import React from "react";
+import { m } from "motion/react";
+import { revealProps } from "./motion";
 import { SectionLabel } from "../components/marketing/SectionLabel";
 import { Tabs } from "../components/display/Tabs";
 import { Tag } from "../components/display/Tag";
@@ -48,7 +50,7 @@ export function WorkPage({ go, data = {}, projects = [] }) {
           {shown.map((proj, i) => {
             const img = getProjImage(proj.title, proj.image);
             return (
-              <div key={proj.title} data-reveal className="ah-card ah-card--pad-md work-tile" style={{ "--d": `${(i % 2) * 90}ms`, display: "flex", flexDirection: "column", gap: 14 }}>
+              <m.div key={proj.title} {...revealProps((i % 2) * 90)} className="ah-card ah-card--pad-md work-tile" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {img ? (
                   <img src={img} alt={proj.title} style={{ width: "100%", aspectRatio: "16/10", objectFit: "cover", objectPosition: "top", borderRadius: "var(--radius-md)", border: "1px solid var(--line-1)", display: "block" }} />
                 ) : (
@@ -67,7 +69,7 @@ export function WorkPage({ go, data = {}, projects = [] }) {
                     <a href={proj.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-body)", textDecoration: "none" }}>Visit <span style={{ color: "var(--text-accent)" }}>↗</span></a>
                   )}
                 </div>
-              </div>
+              </m.div>
             );
           })}
           {shown.length === 0 && (

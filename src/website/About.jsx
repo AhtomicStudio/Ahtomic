@@ -1,4 +1,6 @@
 import React from "react";
+import { m } from "motion/react";
+import { revealProps } from "./motion";
 import { SectionLabel } from "../components/marketing/SectionLabel";
 import { Button } from "../components/forms/Button";
 import { Card } from "../components/display/Card";
@@ -65,7 +67,7 @@ export function AboutPage({ go, data = {}, projects = [] }) {
             [liveProjects, "live and in use today"],
             ["1", "point of contact, always"]
           ].map(([n, d], i) => (
-            <div key={d} data-reveal style={{ "--d": `${i * 90}ms` }}>
+            <m.div key={d} {...revealProps(i * 90)}>
               <Card className="stat-card" style={{ height: "100%", padding: 20 }}>
                 <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: "var(--tracking-display)" }}>
                   <CountUp to={n} />
@@ -73,7 +75,7 @@ export function AboutPage({ go, data = {}, projects = [] }) {
                 </div>
                 <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{d}</div>
               </Card>
-            </div>
+            </m.div>
           ))}
         </div>
         <div className="btn-row" style={{ marginTop: 64 }}>

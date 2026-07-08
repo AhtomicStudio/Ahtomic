@@ -9,8 +9,9 @@
   text-decoration: none; white-space: nowrap;
 }
 .ah-btn:focus-visible { outline: none; box-shadow: var(--ring); }
-.ah-btn:active { transform: translateY(1px); }
 .ah-btn[disabled] { cursor: not-allowed; opacity: 0.4; transform: none; }
+/* Press feedback (was CSS :active) is now whileTap in Button.jsx —
+   Framer Motion sets the transform inline while the DOM node is pressed. */
 .ah-btn--sm { height: var(--control-h-sm); padding: 0 14px; font-size: 13px; }
 .ah-btn--md { height: var(--control-h-md); padding: 0 18px; font-size: 14px; }
 .ah-btn--lg { height: var(--control-h-lg); padding: 0 24px; font-size: 15px; }

@@ -1,4 +1,6 @@
 import React from "react";
+import { m } from "motion/react";
+import { revealProps } from "./motion";
 import { SectionLabel } from "../components/marketing/SectionLabel";
 import { Card } from "../components/display/Card";
 import { Button } from "../components/forms/Button";
@@ -33,7 +35,7 @@ export function ServicesPage({ go, data = {} }) {
         </h1>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 48 }}>
           {SERVICES.map(([n, title, body, points], i) => (
-            <div key={n} data-reveal style={{ "--d": `${i * 90}ms` }}>
+            <m.div key={n} {...revealProps(i * 90)}>
               <Card padding="lg" className="svc-row">
                 <div className="svc-grid">
                   <span className="svc-index" style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--text-accent)" }}>{n}</span>
@@ -50,7 +52,7 @@ export function ServicesPage({ go, data = {} }) {
                   </ul>
                 </div>
               </Card>
-            </div>
+            </m.div>
           ))}
         </div>
         <div className="svc-cta" style={{ marginTop: 64, borderTop: "1px solid var(--line-1)", paddingTop: 32 }}>

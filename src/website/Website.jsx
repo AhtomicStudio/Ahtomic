@@ -1,4 +1,6 @@
 import React from "react";
+import { AnimatePresence, m } from "motion/react";
+import { MotionProvider, pageTransition } from "./motion";
 import { Button } from "../components/forms/Button";
 import { Nav, Footer, BackToTop, Page, pathFor } from "./shared";
 import { HomePage } from "./Home";
@@ -120,32 +122,10 @@ export function WebsiteView() {
     if (canonical && page) canonical.setAttribute("href", "https://ahtomic.studio" + (page === "Home" ? "/" : pathFor(page)));
   }, [page, siteData]);
 
-  // Reveal elements on scroll. Watches #main-content for DOM changes so
-  // elements added later by in-page state (e.g. the Work page's tab filter)
-  // get observed too — otherwise they're stuck at opacity:0 forever, since
-  // this effect only re-runs on page/loading changes, not on every re-render.
-  React.useEffect(() => {
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((en) => {
-        if (en.isIntersecting) {
-          en.target.classList.add("is-in");
-          io.unobserve(en.target);
-        }
-      });
-    }, { threshold: 0.12 });
-
-    const observeNew = (root) => {
-      root.querySelectorAll("[data-reveal]:not(.is-in)").forEach((el) => io.observe(el));
-    };
-
-    const main = document.getElementById("main-content");
-    observeNew(document);
-
-    const mo = main ? new MutationObserver(() => observeNew(main)) : null;
-    if (mo && main) mo.observe(main, { childList: true, subtree: true });
-
-    return () => { io.disconnect(); if (mo) mo.disconnect(); };
-  }, [page, loading]);
+  // Scroll reveals are now handled per-component by Framer Motion's
+  // whileInView (see revealVariants in ./motion) — no page-level observer
+  // needed; it re-evaluates naturally on every render, including content
+  // that changes without a page navigation (e.g. the Work page's tabs).
 
   // Ambient parallax scrolling effect
   React.useEffect(() => {
@@ -891,39 +871,52 @@ export function WebsiteView() {
   };
 
   return (
-    <div data-screen-label={page || "404"} style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <a href="#main-content" className="skip-link" onClick={(e) => { e.preventDefault(); const m = document.getElementById("main-content"); if (m) m.focus(); }}>Skip to content</a>
-      
-      {a.grid && (
-        <div className="backdrop" aria-hidden="true">
-          <canvas id="grid-canvas"></canvas>
-        </div>
-      )}
-      
-      {a.glow !== false && (
-        <div className="ambient" id="ambient" aria-hidden="true">
-          {PAGES.map((p) => (
-            <div key={p} className={`amb-${p}`} data-on={String(p === page)}></div>
-          ))}
-        </div>
-      )}
+    <MotionProvider>
+      <div data-screen-label={page || "404"} style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <a href="#main-content" className="skip-link" onClick={(e) => { e.preventDefault(); const mainEl = document.getElementById("main-content"); if (mainEl) mainEl.focus(); }}>Skip to content</a>
 
-      {a.grain && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 99, pointerEvents: "none", opacity: 0.15,
-          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.86 0 0 0 0 0.89 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E\")"
-        }}></div>
-      )}
+        {a.grid && (
+          <div className="backdrop" aria-hidden="true">
+            <canvas id="grid-canvas"></canvas>
+          </div>
+        )}
 
-      <Nav page={page} go={go} />
-      
-      <main id="main-content" tabIndex={-1} key={page || "404"} className="page-enter" style={{ flex: 1, position: "relative", zIndex: 1, outline: "none" }}>
-        {page ? pages[page] : <NotFound go={go} />}
-      </main>
-      
-      <Footer go={go} settings={siteData.settings} />
-      <BackToTop />
-    </div>
+        {a.glow !== false && (
+          <div className="ambient" id="ambient" aria-hidden="true">
+            {PAGES.map((p) => (
+              <div key={p} className={`amb-${p}`} data-on={String(p === page)}></div>
+            ))}
+          </div>
+        )}
+
+        {a.grain && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 99, pointerEvents: "none", opacity: 0.15,
+            backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.86 0 0 0 0 0.89 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E\")"
+          }}></div>
+        )}
+
+        <Nav page={page} go={go} />
+
+        <AnimatePresence mode="wait">
+          <m.main
+            id="main-content"
+            tabIndex={-1}
+            key={page || "404"}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -14 }}
+            transition={pageTransition}
+            style={{ flex: 1, position: "relative", zIndex: 1, outline: "none" }}
+          >
+            {page ? pages[page] : <NotFound go={go} />}
+          </m.main>
+        </AnimatePresence>
+
+        <Footer go={go} settings={siteData.settings} />
+        <BackToTop />
+      </div>
+    </MotionProvider>
   );
 }
 

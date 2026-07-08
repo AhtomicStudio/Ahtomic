@@ -54,13 +54,9 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
 .back-to-top[data-show="true"] { opacity: 1; transform: none; pointer-events: auto; }
 .back-to-top:hover { border-color: var(--line-accent); }
 
-/* Page transition */
-@keyframes pageIn { from { opacity: 0; transform: translateY(14px); } }
-.page-enter { animation: pageIn 420ms var(--ease-out) both; }
-
-/* Scroll reveals — stagger via --d */
-[data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out); transition-delay: var(--d, 0ms); }
-[data-reveal].is-in { opacity: 1; transform: none; }
+/* Page transitions and scroll reveals are handled by Framer Motion
+   (src/website/motion.jsx) — see AnimatePresence in Website.jsx and
+   whileInView on individual page sections. */
 
 /* Red period pulse (hero) */
 @keyframes dotPop { 0% { transform: scale(0); } 60% { transform: scale(1.4); } 100% { transform: scale(1); } }
@@ -99,8 +95,7 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
 .thom:hover { transform: translateY(-6px) rotate(-6deg); }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-enter, .dot-pop { animation: none; }
-  [data-reveal] { opacity: 1; transform: none; transition: none; }
+  .dot-pop { animation: none; }
   .ambient, .ambient > div { transition: none; }
   .backdrop::after { display: none; }
 }
@@ -189,6 +184,5 @@ html[data-sheen="true"] .hl-em {
 }
 
 /* Motion: Off — same treatment as prefers-reduced-motion */
-html[data-motion="Off"] .page-enter, html[data-motion="Off"] .dot-pop { animation: none; }
-html[data-motion="Off"] [data-reveal] { opacity: 1; transform: none; transition: none; }
+html[data-motion="Off"] .dot-pop { animation: none; }
 html[data-motion="Off"] .thom, html[data-motion="Off"] .svc-row, html[data-motion="Off"] .stat-card { transition: none; }
