@@ -153,7 +153,11 @@ export function WebsiteView() {
     const CELL = 72;
     const BASE = "rgba(217,220,226,0.033)";
     let W = 0, H = 0, dpr = 1, field = null, fw = 0, fh = 0, fx = 0, fy = 0;
-    let particles = []; // each: { tx, ty, gridX, gridY, delay, exitDelay, orbitRad, orbitSpeed, orbitAngle, mx, my, mvx, mvy, color }
+    let particles = [];        // letterform "atoms" — see buildBand
+    let intersections = [];    // unique grid intersections particles pour from
+    let lightningPairs = [];   // precomputed close-neighbor index pairs
+    let sizeK = 1;             // letterform scale factor (1 at desktop, ~0.5 on phones)
+    let coordX = null, coordY = null, coordA = null, coordS = null; // per-frame particle coords (typed, reused)
     let raf = 0, wordTimer = 0, pulseTimer = 0;
     let wordT0 = -1;    // start time of active word reveal, -1 = idle
     let wordPhase = "idle", lastWordPhase = "idle";
@@ -185,6 +189,7 @@ export function WebsiteView() {
       }
 
       fh = Math.round(fontPx * 1.5);
+      sizeK = Math.max(0.45, Math.min(1, fh / 200));
       fw = Math.ceil(textWidth + 24); // small pad so glyph edges never touch the canvas edge
       fx = Math.max(margin, Math.min(W * 0.52, W - fw - margin));
       fy = 72;
@@ -205,231 +210,273 @@ export function WebsiteView() {
       return field.data[(py * field.width + px) * 4 + 3] / 255;
     };
 
+    // Word-reveal timeline (ms). Kept as named constants because the exit
+    // choreography math depends on knowing when "out" starts.
+    const IN_MS = 3600, HOLD_MS = 7000, OUT_MS = 2200;
+
     const buildBand = () => {
       particles = [];
       textPulses = [];
+      intersections = [];
+      lightningPairs = [];
       if (!field) return;
 
-      // Scan offscreen canvas to extract potential pixel coordinates (denser scan for higher count)
       const candidates = [];
       for (let x = 0; x < fw; x += 1) {
         for (let y = 0; y < fh; y += 1) {
-          const val = ink(x + fx, y + fy);
-          if (val > 0.35) {
-            candidates.push({ x, y });
-          }
+          if (ink(x + fx, y + fy) > 0.35) candidates.push({ x, y });
         }
       }
 
-      // Sample a dense subset (800 particles) for rich, high-fidelity letter definitions
-      const numParticles = Math.min(800, candidates.length);
+      // Particle count scales with the letterform's actual width — a fixed
+      // count packed into a small mobile field turns the letters to mush.
+      // ~520 at desktop width, ~260 on a phone. (Count is also the biggest
+      // perf lever; this is what took hold-phase from ~45fps to 60.)
+      const numParticles = Math.min(Math.max(260, Math.round(fw * 0.72)), 520, candidates.length);
       const step = candidates.length / numParticles;
+      const interMap = new Map(); // grid intersection -> aggregate flow timings
+
       for (let i = 0; i < numParticles; i++) {
         const candidate = candidates[Math.floor(i * step)];
         if (!candidate) continue;
 
         const tx = candidate.x + fx;
         const ty = candidate.y + fy;
-
-        // nearest grid intersection
         const gridX = 0.5 + Math.round((tx - 0.5) / CELL) * CELL;
         const gridY = 0.5 + Math.round((ty - 0.5) / CELL) * CELL;
 
-        // Progressive left-to-right sweep stagger delay
+        // Left-to-right pour: each particle's stream starts on a sweep
         const staggerX = (tx - fx) / fw;
-        const flowDelay = staggerX * 2.5 + Math.random() * 0.3; // sweeps from left to right (max 2.8s)
-        const exitDelay = (1.0 - staggerX) * 0.9 + Math.random() * 0.2; // exits in reverse (max 1.1s)
-
-        // Emergence travel speed: 220px/s (majestic controlled crawl)
+        const flowDelay = staggerX * 2.0 + Math.random() * 0.25; // seconds
+        const exitDelay = (1.0 - staggerX) * 0.8 + Math.random() * 0.15;
+        // Slow enough that the stream from intersection to letterform is
+        // actually visible (at 240px/s the ~30px trip took 0.2s — read as a
+        // fade-in, not a pour)
         const dist = Math.hypot(tx - gridX, ty - gridY);
-        const flowSpeed = 220;
-        const flowDuration = Math.max(0.15, dist / flowSpeed);
+        const flowDuration = Math.max(0.55, dist / 70);
 
-        // Orbit physics: electrical vibration
-        const orbitRad = 0.8 + Math.random() * 2.2;
+        // Orbit: the "electrons vibrating" idle motion during hold. Amplitude
+        // scales with letterform size — at mobile scale a fixed ±2.8px orbit
+        // is wider than the letter strokes themselves and mushes the word.
+        const orbitRad = (0.8 + Math.random() * 2.0) * sizeK;
         const orbitSpeed = (1.0 + Math.random() * 1.6) * (Math.random() < 0.5 ? 1 : -1);
-        const orbitAngle = Math.random() * Math.PI * 2;
 
         particles.push({
-          tx, ty,
-          gridX, gridY,
-          flowDelay,
-          exitDelay,
-          flowDuration,
-          orbitRad,
-          orbitSpeed,
-          orbitAngle,
-          color: Math.random() < 0.25 ? "rgba(255,140,120," : "rgba(255,80,68,"
+          tx, ty, gridX, gridY,
+          flowDelay, exitDelay, flowDuration,
+          orbitRad, orbitSpeed,
+          orbitAngle: Math.random() * Math.PI * 2,
+          hot: Math.random() < 0.22,
         });
+
+        // Register the source intersection ("tap") and when it's pouring
+        const key = gridX + "," + gridY;
+        const rec = interMap.get(key) || { x: gridX, y: gridY, inStart: Infinity, inEnd: 0, outStart: Infinity, outEnd: 0 };
+        rec.inStart = Math.min(rec.inStart, flowDelay);
+        rec.inEnd = Math.max(rec.inEnd, flowDelay + flowDuration);
+        rec.outStart = Math.min(rec.outStart, exitDelay);
+        rec.outEnd = Math.max(rec.outEnd, exitDelay + flowDuration);
+        interMap.set(key, rec);
       }
-    };
+      intersections = [...interMap.values()];
 
-    // Calculate dynamic coords for a single particle based on elapsed time, orbit, and scroll Y
-    const getOffsets = (pt, el, dt, currentScrollY) => {
-      const ease = (val) => 1 - Math.pow(1 - val, 3);
-
-      const ox = Math.cos(pt.orbitAngle) * pt.orbitRad;
-      const oy = Math.sin(pt.orbitAngle) * pt.orbitRad;
-
-      // Base target coordinates of particle
-      let rx = pt.tx + ox;
-      let ry = pt.ty + oy;
-      let opacity = 1;
-      let scale = 1;
-
-      if (wordPhase === "in") {
-        // Waterfall cascade: emergence speed matching grid pulses
-        const localEl = el - pt.flowDelay * 1000;
-        let lp = localEl / (pt.flowDuration * 1000);
-        lp = Math.max(0, Math.min(1, lp));
-        const easeLP = ease(lp);
-        
-        // Sagging waterfall curve: add vertical curve drag offset that decays as easeLP -> 1
-        rx = pt.gridX + (pt.tx + ox - pt.gridX) * easeLP;
-        ry = pt.gridY + (pt.ty + oy - pt.gridY) * easeLP + Math.sin((1.0 - easeLP) * Math.PI) * 45;
-        scale = easeLP;
-        opacity = Math.min(1.0, easeLP * 2.0);
-      } else if (wordPhase === "out") {
-        // Synchronized retreat: slide particles back to their spawning intersections
-        const exitStart = pt.exitDelay * 1000;
-        const exitDuration = Math.max(200, 2400 - exitStart - 200); // completed 200ms before phase end
-        const localEl = (el - 11800) - exitStart;
-        let lp = 1.0 - (localEl / exitDuration);
-        lp = Math.max(0, Math.min(1, lp));
-        const easeLP = ease(lp);
-        
-        rx = pt.gridX + (pt.tx + ox - pt.gridX) * easeLP;
-        ry = pt.gridY + (pt.ty + oy - pt.gridY) * easeLP;
-        scale = easeLP;
-        opacity = Math.min(1.0, easeLP * 4.0); // opacity stays high, shrinks at the very end
-      }
-
-      // Subtract currentScrollY to anchor the text logo layout relative to scroll
-      return { rx, ry: ry - currentScrollY, opacity, scale };
-    };
-
-    // Calculate dynamic coords for all particles based on phase & orbit physics
-    const getParticleCoords = (el, dt, currentScrollY) => {
-      const activeCoords = [];
-
-      for (const pt of particles) {
-        // Orbit speed scales based on hold state vs transitions
-        const speedMult = wordPhase === "hold" ? 2.5 : 1.0;
-        pt.orbitAngle += pt.orbitSpeed * dt * speedMult;
-
-        const coords = getOffsets(pt, el, dt, currentScrollY);
-        activeCoords.push({ rx: coords.rx, ry: coords.ry, opacity: coords.opacity, scale: coords.scale, color: pt.color, pt });
-      }
-
-      return activeCoords;
-    };
-
-    // Render the word "Ahtomic" as a vibrating constellation of electrons and chemical arcs
-    const drawWord = (p, dt, el, currentScrollY) => {
-      if (p <= 0.01 || !particles.length) return;
-
-      const coords = getParticleCoords(el, dt, currentScrollY);
-
-      // 1. Draw sharp, zigzag lightning discharges between nearby coordinates
-      for (let i = 0; i < coords.length; i++) {
-        const p1 = coords[i];
-        const maxChecks = Math.min(coords.length, i + 12);
-        for (let j = i + 1; j < maxChecks; j++) {
-          const p2 = coords[j];
-          const dx = p1.rx - p2.rx;
-          const dy = p1.ry - p2.ry;
-          const distSq = dx * dx + dy * dy;
-          if (distSq < 576) { // distance < 24px
-            const dist = Math.sqrt(distSq);
-            const alpha = (1 - dist / 24) * 0.55 * p1.opacity * p2.opacity * p;
-            
-            // Render sharp flickering zigzag discharge path
-            if (Math.random() < 0.75) {
-              ctx.strokeStyle = "rgba(255,140,120," + alpha.toFixed(3) + ")";
-              ctx.lineWidth = 0.6;
-              ctx.beginPath();
-              ctx.moveTo(p1.rx, p1.ry);
-              
-              // 3-segment zigzag pathing
-              const segments = 3;
-              for (let s = 1; s < segments; s++) {
-                const frac = s / segments;
-                const px = p1.rx + (p2.rx - p1.rx) * frac;
-                const py = p1.ry + (p2.ry - p1.ry) * frac;
-                
-                // Perpendicular vector for offset
-                const nx = -dy / (dist || 1);
-                const ny = dx / (dist || 1);
-                const jitter = (Math.random() - 0.5) * 4.2;
-                
-                ctx.lineTo(px + nx * jitter, py + ny * jitter);
+      // Precompute lightning pairs once (was a pairwise distance scan every
+      // frame). Spatial hash finds close neighbors; capped so the effect
+      // stays a quiet crackle, not a mesh.
+      const cellOf = (p) => (p.tx >> 5) + ":" + (p.ty >> 5);
+      const buckets = new Map();
+      particles.forEach((p, i) => {
+        const k = cellOf(p);
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push(i);
+      });
+      for (let i = 0; i < particles.length && lightningPairs.length < 360; i++) {
+        const p1 = particles[i];
+        const bx = p1.tx >> 5, by = p1.ty >> 5;
+        let linked = 0;
+        for (let ox = -1; ox <= 1 && linked < 2; ox++) {
+          for (let oy = -1; oy <= 1 && linked < 2; oy++) {
+            const list = buckets.get((bx + ox) + ":" + (by + oy)) || [];
+            for (const j of list) {
+              if (j <= i) continue;
+              const p2 = particles[j];
+              const d2 = (p1.tx - p2.tx) ** 2 + (p1.ty - p2.ty) ** 2;
+              if (d2 > 36 && d2 < 676) { // 6px < d < 26px
+                lightningPairs.push([i, j]);
+                if (++linked >= 2) break;
               }
-              ctx.lineTo(p2.rx, p2.ry);
-              ctx.stroke();
             }
           }
         }
       }
+    };
 
-      // 2. Draw glowing charge nodes (matching the grid pulse sizes)
-      for (const p1 of coords) {
-        const alpha = p * p1.opacity;
-        const scale = p1.scale ?? 1.0;
-        if (alpha <= 0.01 || scale <= 0.01) continue;
+    // Compute every particle's position/opacity/scale for this frame into
+    // reusable typed arrays. Runs ONCE per frame; drawWord and drawTextPulses
+    // both read from it (the previous version recomputed per pulse segment).
+    const computeCoords = (el, dt, currentScrollY) => {
+      const n = particles.length;
+      if (!coordX || coordX.length !== n) {
+        coordX = new Float32Array(n); coordY = new Float32Array(n);
+        coordA = new Float32Array(n); coordS = new Float32Array(n);
+      }
+      const easeFn = (val) => 1 - Math.pow(1 - val, 3);
+      const speedMult = wordPhase === "hold" ? 2.5 : 1.0;
 
-        const fl = 0.72 + Math.random() * 0.28; // flicker
-        const isHotNode = p1.pt.orbitRad > 1.8;
+      for (let i = 0; i < n; i++) {
+        const pt = particles[i];
+        pt.orbitAngle += pt.orbitSpeed * dt * speedMult;
+        const ox = Math.cos(pt.orbitAngle) * pt.orbitRad;
+        const oy = Math.sin(pt.orbitAngle) * pt.orbitRad;
 
-        ctx.save();
-        if (isHotNode && alpha > 0.15) {
-          ctx.shadowColor = "rgba(255,59,47,0.9)";
-          ctx.shadowBlur = 8 * fl * scale;
+        let rx = pt.tx + ox, ry = pt.ty + oy, opacity = 1, scale = 1;
+
+        if (wordPhase === "in") {
+          // Pour: the particle is VISIBLE at its intersection the moment its
+          // stream starts (opacity ramps fast), then travels to its spot in
+          // the letterform with a slight gravity sag.
+          const lp = Math.max(0, Math.min(1, (el - pt.flowDelay * 1000) / (pt.flowDuration * 1000)));
+          const e = easeFn(lp);
+          rx = pt.gridX + (pt.tx + ox - pt.gridX) * e;
+          ry = pt.gridY + (pt.ty + oy - pt.gridY) * e + Math.sin((1 - e) * Math.PI) * 26 * sizeK;
+          scale = 0.4 + 0.6 * e;
+          opacity = el >= pt.flowDelay * 1000 ? Math.min(1, lp * 3 + 0.25) : 0;
+        } else if (wordPhase === "out") {
+          // Drain: flow back INTO the intersection (no fade-in-place) —
+          // stays bright while traveling, shrinks only on arrival.
+          const exitStart = pt.exitDelay * 1000;
+          const exitDuration = Math.max(200, OUT_MS - exitStart - 200);
+          const localEl = (el - (IN_MS + HOLD_MS)) - exitStart;
+          const lp = Math.max(0, Math.min(1, 1 - localEl / exitDuration));
+          const e = easeFn(lp);
+          rx = pt.gridX + (pt.tx + ox - pt.gridX) * e;
+          ry = pt.gridY + (pt.ty + oy - pt.gridY) * e;
+          scale = 0.3 + 0.7 * e;
+          opacity = Math.min(1, e * 5);
         }
 
-        ctx.fillStyle = p1.color + (0.95 * alpha * fl).toFixed(3) + ")";
-        ctx.beginPath();
-        const baseRadius = isHotNode ? 1.2 : 0.7; // extremely small particles
-        ctx.arc(p1.rx, p1.ry, baseRadius * fl * scale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        coordX[i] = rx;
+        coordY[i] = ry - currentScrollY;
+        coordA[i] = opacity;
+        coordS[i] = scale;
       }
     };
 
-    // Spawn a path-following electrical current running through adjacent particles
-    const spawnTextPulse = () => {
-      if (!particles.length || textPulses.length >= 6) return;
+    // The "taps": intersections glow while material is pouring out of (or
+    // draining back into) them — this is what sells the pour effect.
+    const drawIntersections = (el, currentScrollY) => {
+      if (wordPhase !== "in" && wordPhase !== "out") return;
+      const t = el / 1000;
+      ctx.fillStyle = "rgba(255,110,95,0.85)";
+      for (const it of intersections) {
+        let k = 0;
+        if (wordPhase === "in") {
+          // ramp up just before the first particle leaves, fade once the last lands
+          if (t > it.inStart - 0.25 && t < it.inEnd + 0.3) {
+            const rampIn = Math.min(1, (t - (it.inStart - 0.25)) / 0.3);
+            const rampOut = Math.min(1, (it.inEnd + 0.3 - t) / 0.4);
+            k = Math.min(rampIn, rampOut);
+          }
+        } else {
+          const te = (el - (IN_MS + HOLD_MS)) / 1000;
+          if (te > it.outStart - 0.15 && te < it.outEnd + 0.35) {
+            const rampIn = Math.min(1, (te - (it.outStart - 0.15)) / 0.25);
+            const rampOut = Math.min(1, (it.outEnd + 0.35 - te) / 0.4);
+            k = Math.min(rampIn, rampOut);
+          }
+        }
+        if (k <= 0.02) continue;
+        const fl = 0.8 + Math.random() * 0.2;
+        const r = 2.2 * k * fl;
+        const y = it.y - currentScrollY;
+        ctx.globalAlpha = 0.85 * k * fl;
+        ctx.fillRect(it.x - r, y - r, r * 2, r * 2);
+      }
+      ctx.globalAlpha = 1;
+    };
 
-      let curr = particles[Math.floor(Math.random() * particles.length)];
+    // Render the word "Ahtomic" as a constellation of vibrating charge nodes.
+    // Perf notes: nodes are flat fillRects (no shadowBlur — it was the single
+    // biggest frame cost), lightning links come from the precomputed pair
+    // list, and positions come from the shared per-frame coord arrays.
+    const drawWord = (p) => {
+      if (p <= 0.01 || !particles.length) return;
+
+      // 1. Lightning: a random subset of the precomputed neighbor pairs
+      // flickers each frame — quiet crackle, one midpoint kink per bolt.
+      const subset = wordPhase === "hold" ? 0.28 : 0.18;
+      ctx.lineWidth = 0.7;
+      for (const [i, j] of lightningPairs) {
+        if (Math.random() > subset) continue;
+        const aI = coordA[i], aJ = coordA[j];
+        if (aI <= 0.05 || aJ <= 0.05) continue;
+        const alpha = 0.3 * aI * aJ * p;
+        ctx.strokeStyle = "rgba(255,140,120," + alpha.toFixed(3) + ")";
+        ctx.beginPath();
+        ctx.moveTo(coordX[i], coordY[i]);
+        ctx.lineTo(
+          (coordX[i] + coordX[j]) / 2 + (Math.random() - 0.5) * 5 * sizeK,
+          (coordY[i] + coordY[j]) / 2 + (Math.random() - 0.5) * 5 * sizeK
+        );
+        ctx.lineTo(coordX[j], coordY[j]);
+        ctx.stroke();
+      }
+
+      // 2. Charge nodes: two flat passes (normal, then hot with a halo rect)
+      ctx.fillStyle = "rgba(255,80,68,0.95)";
+      for (let i = 0; i < particles.length; i++) {
+        if (particles[i].hot) continue;
+        const a = coordA[i] * p;
+        if (a <= 0.02) continue;
+        const fl = 0.72 + Math.random() * 0.28;
+        const r = 1.05 * fl * coordS[i];
+        ctx.globalAlpha = a * fl;
+        ctx.fillRect(coordX[i] - r, coordY[i] - r, r * 2, r * 2);
+      }
+      for (let i = 0; i < particles.length; i++) {
+        if (!particles[i].hot) continue;
+        const a = coordA[i] * p;
+        if (a <= 0.02) continue;
+        const fl = 0.72 + Math.random() * 0.28;
+        const r = 1.45 * fl * coordS[i];
+        // soft halo (replaces shadowBlur at a fraction of the cost)
+        ctx.fillStyle = "rgba(255,59,47,0.95)";
+        ctx.globalAlpha = a * fl * 0.22;
+        ctx.fillRect(coordX[i] - r * 2.4, coordY[i] - r * 2.4, r * 4.8, r * 4.8);
+        ctx.fillStyle = "rgba(255,140,120,0.95)";
+        ctx.globalAlpha = a * fl;
+        ctx.fillRect(coordX[i] - r, coordY[i] - r, r * 2, r * 2);
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    // Spawn a path-following electrical current running through adjacent
+    // particles. Paths store particle INDICES so drawing can read the shared
+    // per-frame coord arrays instead of recomputing positions.
+    const spawnTextPulse = () => {
+      if (!particles.length) return; // count is gated by the caller (maxPulses)
+
+      let curr = Math.floor(Math.random() * particles.length);
       const path = [curr];
       const pathLen = 8 + Math.floor(Math.random() * 5);
       const visited = new Set([curr]);
 
-      for (let i = 0; i < pathLen; i++) {
-        let best = null;
+      for (let s = 0; s < pathLen; s++) {
+        let best = -1;
         let minDistSq = Infinity;
-        // Fast local search: check adjacent indexes in the particle array
-        const startIdx = Math.max(0, particles.indexOf(curr) - 20);
+        const startIdx = Math.max(0, curr - 20);
         const endIdx = Math.min(particles.length, startIdx + 40);
-
+        const cp = particles[curr];
         for (let j = startIdx; j < endIdx; j++) {
+          if (visited.has(j)) continue;
           const pt = particles[j];
-          if (visited.has(pt)) continue;
-          const dx = curr.tx - pt.tx;
-          const dy = curr.ty - pt.ty;
-          const distSq = dx * dx + dy * dy;
-          if (distSq < minDistSq && distSq < 900) { // snap window: 30px
-            minDistSq = distSq;
-            best = pt;
-          }
+          const distSq = (cp.tx - pt.tx) ** 2 + (cp.ty - pt.ty) ** 2;
+          if (distSq < minDistSq && distSq < 900) { minDistSq = distSq; best = j; }
         }
-
-        if (best) {
-          path.push(best);
-          visited.add(best);
-          curr = best;
-        } else {
-          break;
-        }
+        if (best < 0) break;
+        path.push(best);
+        visited.add(best);
+        curr = best;
       }
 
       if (path.length >= 4) {
@@ -438,59 +485,45 @@ export function WebsiteView() {
           progress: 0,
           speed: 12 + Math.random() * 8, // node hops per second
           glow: Math.random() < 0.4,
-          tail: 3 + Math.floor(Math.random() * 3)
+          tail: 3 + Math.floor(Math.random() * 3),
         });
       }
     };
 
-    // Draw active electric currents traveling along constellation pathways
-    const drawTextPulses = (dt, p, el, currentScrollY, isNearLogo) => {
+    // Electric currents traveling along constellation pathways
+    const drawTextPulses = (dt, p, currentScrollY, isNearLogo) => {
       if (p <= 0.05 || !textPulses.length) return;
 
       for (const tp of textPulses) {
-        // Speed up the pulse flow when the user is hovering over/near the logo
         const currentSpeed = tp.speed * (isNearLogo ? 2.5 : 1.0);
         tp.progress += currentSpeed * dt;
         if (tp.progress >= tp.path.length) continue;
 
         const pIndex = Math.floor(tp.progress);
         const pFrac = tp.progress - pIndex;
+        const iHead = tp.path[pIndex];
+        const iNext = tp.path[Math.min(tp.path.length - 1, pIndex + 1)];
+        const hx = coordX[iHead] + (coordX[iNext] - coordX[iHead]) * pFrac;
+        const hy = coordY[iHead] + (coordY[iNext] - coordY[iHead]) * pFrac;
 
-        const headNode = tp.path[pIndex];
-        const nextNode = tp.path[Math.min(tp.path.length - 1, pIndex + 1)];
-
-        const headOffsets = getOffsets(headNode, el, dt, currentScrollY);
-        const nextOffsets = getOffsets(nextNode, el, dt, currentScrollY);
-
-        const hx = headOffsets.rx + (nextOffsets.rx - headOffsets.rx) * pFrac;
-        const hy = headOffsets.ry + (nextOffsets.ry - headOffsets.ry) * pFrac;
-
-        // Draw tail backwards along the traversed constellation path
-        const tailLength = tp.tail;
+        // Tail backwards along the traversed path
         ctx.lineWidth = tp.glow ? (isNearLogo ? 3.0 : 2.2) : (isNearLogo ? 2.0 : 1.4);
-
-        for (let i = 0; i < tailLength; i++) {
+        for (let i = 0; i < tp.tail; i++) {
           const idx = pIndex - i;
-          if (idx < 0) break;
-
-          const node0 = tp.path[idx];
-          const node1 = tp.path[Math.max(0, idx - 1)];
-
-          const o0 = getOffsets(node0, el, dt, currentScrollY);
-          const o1 = getOffsets(node1, el, dt, currentScrollY);
-
-          const alpha = (1 - i / tailLength) * p * o0.opacity;
+          if (idx < 1) break;
+          const i0 = tp.path[idx], i1 = tp.path[idx - 1];
+          const alpha = (1 - i / tp.tail) * p * coordA[i0];
           ctx.strokeStyle = tp.glow
             ? "rgba(255,200,160," + (alpha * 0.85).toFixed(3) + ")"
             : "rgba(255,100,84," + (alpha * 0.75).toFixed(3) + ")";
-
           ctx.beginPath();
-          ctx.moveTo(o0.rx, o0.ry);
-          ctx.lineTo(o1.rx, o1.ry);
+          ctx.moveTo(coordX[i0], coordY[i0]);
+          ctx.lineTo(coordX[i1], coordY[i1]);
           ctx.stroke();
         }
 
-        // Draw flickering head charge
+        // Flickering head charge — the ONLY place shadowBlur is still used
+        // on the word (a handful of pulse heads, not hundreds of nodes)
         const fl = 0.75 + Math.random() * 0.25;
         ctx.save();
         if (tp.glow) {
@@ -501,31 +534,29 @@ export function WebsiteView() {
           ? "rgba(255,230,190," + (0.95 * fl * p).toFixed(3) + ")"
           : "rgba(255,130,112," + (0.95 * fl * p).toFixed(3) + ")";
         ctx.beginPath();
-        // Slightly larger head during logo hover intensity
         const baseRadius = tp.glow ? 3.0 : 1.8;
-        const radius = isNearLogo ? baseRadius * 1.5 : baseRadius;
-        ctx.arc(hx, hy, radius * fl, 0, Math.PI * 2);
+        ctx.arc(hx, hy, (isNearLogo ? baseRadius * 1.5 : baseRadius) * fl, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
-        // Emit sharp electrical sparks from the head coordinate (with logo flag)
+        // Sparks off the head
         const sparkChance = isNearLogo ? dt * 85 : dt * 30;
         if (Math.random() < sparkChance) {
           const angle = Math.random() * Math.PI * 2;
           sparks.push({
             x: hx,
-            y: hy + currentScrollY, // store absolute coordinate space Y
+            y: hy + currentScrollY, // stored in absolute page space
             logo: true,
             nx: Math.cos(angle),
             ny: Math.sin(angle),
-            len: 3 + Math.random() * 5, // very short length (3px to 8px)
-            life: 0.05 + Math.random() * 0.06, // extremely short lifetime
-            age: 0
+            len: 3 + Math.random() * 5,
+            life: 0.05 + Math.random() * 0.06,
+            age: 0,
           });
         }
       }
 
-      textPulses = textPulses.filter(tp => tp.progress < tp.path.length);
+      textPulses = textPulses.filter((tp) => tp.progress < tp.path.length);
     };
 
     const draw = (p, dt, el, currentScrollY, isNearLogo) => {
@@ -545,14 +576,12 @@ export function WebsiteView() {
       // 3. Draw background grid pulses
       drawGridPulses(dt);
 
-      // 4. Draw text pulses (electrical currents traveling on the letters)
-      if (p > 0.05) {
-        drawTextPulses(dt, p, el, currentScrollY, isNearLogo);
-      }
-
-      // 5. Draw word (lightning connections + particle nodes on top)
+      // 4. Word layers — one coord computation feeds everything below
       if (p > 0) {
-        drawWord(p, dt, el, currentScrollY);
+        computeCoords(el, dt, currentScrollY);
+        drawIntersections(el, currentScrollY);
+        if (p > 0.05) drawTextPulses(dt, p, currentScrollY, isNearLogo);
+        drawWord(p);
       }
     };
 
@@ -697,16 +726,17 @@ export function WebsiteView() {
       let p = 0;
       let phase = "idle";
 
-      // Slower, more majestic left-to-right sweep reveal timing (4.8 seconds reveal)
-      if (el < 4800) {
+      if (el < IN_MS) {
         phase = "in";
-        p = ease(el / 4800);
-      } else if (el < 11800) {
+        p = ease(el / IN_MS);
+      } else if (el < IN_MS + HOLD_MS) {
         phase = "hold";
         p = 1;
-      } else if (el < 14200) {
+      } else if (el < IN_MS + HOLD_MS + OUT_MS) {
         phase = "out";
-        p = 1 - ease((el - 11800) / 2400);
+        // p stays 1 through the drain — particles exit by FLOWING back to
+        // their intersections (computeCoords), not by a global fade
+        p = 1;
       } else {
         wordT0 = -1;
         phase = "idle";
@@ -774,6 +804,10 @@ export function WebsiteView() {
       textPulses = [];
       ensureLoop();
     };
+    if (import.meta.env.DEV) {
+      // dev-only timing hook for visual tests; stripped from prod builds
+      window.__wordState = () => ({ t0: wordT0, phase: wordPhase, el: wordT0 >= 0 ? performance.now() - wordT0 : -1 });
+    }
     const spawnPulse = () => {
       if (pulses.length < 5) {
         pulses.push(makePulse());

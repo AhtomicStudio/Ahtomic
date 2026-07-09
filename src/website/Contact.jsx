@@ -31,36 +31,47 @@ export function ContactPage({ data = {} }) {
   const [budget, setBudget] = React.useState("Under $10k");
   const [message, setMessage] = React.useState("");
   const [types, setTypes] = React.useState({ website: true, mobileApp: false, designBrand: false });
-  const [err, setErr] = React.useState("");
+  const [honeypot, setHoneypot] = React.useState(""); // bots fill this; humans never see it
+  const [errs, setErrs] = React.useState({});
   const [submitting, setSubmitting] = React.useState(false);
 
   const submit = async () => {
-    if (!email.includes("@")) {
-      setErr("Enter a real email so we can reply.");
+    const cleanName = name.trim();
+    const cleanEmail = email.trim();
+    const cleanMessage = message.trim();
+
+    const next = {};
+    if (!cleanName) next.name = "Tell us who to reply to.";
+    if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) next.email = "Enter a real email so we can reply.";
+    if (cleanMessage.length < 10) next.message = "A sentence or two about the project is plenty.";
+    setErrs(next);
+    if (Object.keys(next).length) return;
+
+    // Silent success for bots — nothing is written
+    if (honeypot) {
+      setSent(true);
       return;
     }
-    setErr("");
-    setSubmitting(true);
 
+    setSubmitting(true);
     try {
       if (db) {
-        // Save to Firestore 'contacts' collection
         await addDoc(collection(db, "inquiries"), {
-          name,
-          email,
+          name: cleanName,
+          email: cleanEmail,
           budget,
-          message,
+          message: cleanMessage,
           types,
           timestamp: serverTimestamp()
         });
       } else {
         // Simulated local fallback
-        console.log("Firebase not initialized. Simulating submission:", { name, email, budget, message, types });
+        console.log("Firebase not initialized. Simulating submission:", { name: cleanName, email: cleanEmail, budget, message: cleanMessage, types });
       }
       setSent(true);
     } catch (e) {
       console.error("Submission error:", e);
-      setErr("Failed to send message. Please try again or email us directly.");
+      setErrs({ message: "Something failed on our side. Try again, or email us directly." });
     } finally {
       setSubmitting(false);
     }
@@ -101,8 +112,8 @@ export function ContactPage({ data = {} }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div className="form-row">
-                <Input label="Name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
-                <Input label="Email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} error={err} />
+                <Input label="Name" placeholder="Your name" value={name} maxLength={190} onChange={(e) => setName(e.target.value)} error={errs.name} />
+                <Input label="Email" placeholder="you@company.com" value={email} maxLength={190} onChange={(e) => setEmail(e.target.value)} error={errs.email} />
               </div>
               <Select
                 label="Budget"
@@ -110,7 +121,11 @@ export function ContactPage({ data = {} }) {
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
               />
-              <Input label="About the project" textarea placeholder="What are you building?" value={message} onChange={(e) => setMessage(e.target.value)} />
+              <Input label="About the project" textarea placeholder="What are you building?" value={message} maxLength={4900} onChange={(e) => setMessage(e.target.value)} error={errs.message} />
+              {/* Honeypot — visually hidden, tab-skipped; only bots fill it */}
+              <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", width: 1, height: 1, overflow: "hidden" }}>
+                <input type="text" name="company" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+              </div>
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                 <Checkbox label="Website" checked={types.website} onChange={(e) => setTypes({ ...types, website: e.target.checked })} />
                 <Checkbox label="Mobile app" checked={types.mobileApp} onChange={(e) => setTypes({ ...types, mobileApp: e.target.checked })} />
