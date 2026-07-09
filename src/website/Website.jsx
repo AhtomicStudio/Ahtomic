@@ -120,6 +120,22 @@ export function WebsiteView() {
 
     const canonical = document.querySelector('link[rel="canonical"]');
     if (canonical && page) canonical.setAttribute("href", "https://ahtomic.studio" + (page === "Home" ? "/" : pathFor(page)));
+
+    // 404s: noindex, and don't leave the previous page's canonical dangling
+    // (the SPA serves 200 for unknown paths, so this is the only signal
+    // crawlers get that the page isn't real content)
+    let robots = document.querySelector('meta[name="robots"]');
+    if (!page) {
+      if (canonical) canonical.removeAttribute("href");
+      if (!robots) {
+        robots = document.createElement("meta");
+        robots.setAttribute("name", "robots");
+        document.head.appendChild(robots);
+      }
+      robots.setAttribute("content", "noindex");
+    } else if (robots) {
+      robots.remove();
+    }
   }, [page, siteData]);
 
   // Scroll reveals are now handled per-component by Framer Motion's
