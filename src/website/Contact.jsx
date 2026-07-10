@@ -70,8 +70,9 @@ export function ContactPage({ data = {} }) {
       }
       setSent(true);
     } catch (e) {
-      console.error("Submission error:", e);
-      setErrs({ message: "Something failed on our side. Try again, or email us directly." });
+      console.error("Submission error:", e.code || e.message || e);
+      const code = e.code ? ` (${e.code})` : "";
+      setErrs({ message: `Something failed on our side${code}. Try again, or email us directly.` });
     } finally {
       setSubmitting(false);
     }
