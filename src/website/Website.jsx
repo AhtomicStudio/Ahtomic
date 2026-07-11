@@ -441,12 +441,23 @@ export function WebsiteView({ initialPage, initialSiteData } = {}) {
 
       // 1. Lightning: a random subset of the precomputed neighbor pairs
       // flickers each frame — quiet crackle, one midpoint kink per bolt.
+      // Pairs are precomputed from particles' FINAL letterform positions
+      // (buildBand), but during "in"/"out" each particle is drawn at its
+      // live in-transit position — two particles that end up neighbors in
+      // the word can be mid-flight from completely different grid
+      // intersections, so connecting their live positions drew straight
+      // lines with no relation to the letterform ("polygonal" artifacts).
+      // Gating on scale (a direct proxy for how close to arrived a particle
+      // is — see computeCoords) restricts lines to particles that have
+      // actually landed near their letterform spot.
       const subset = wordPhase === "hold" ? 0.28 : 0.18;
+      const requireSettled = wordPhase !== "hold";
       ctx.lineWidth = 0.7;
       for (const [i, j] of lightningPairs) {
         if (Math.random() > subset) continue;
         const aI = coordA[i], aJ = coordA[j];
         if (aI <= 0.05 || aJ <= 0.05) continue;
+        if (requireSettled && (coordS[i] < 0.9 || coordS[j] < 0.9)) continue;
         const alpha = 0.3 * aI * aJ * p;
         ctx.strokeStyle = "rgba(255,140,120," + alpha.toFixed(3) + ")";
         ctx.beginPath();
@@ -782,6 +793,13 @@ export function WebsiteView({ initialPage, initialSiteData } = {}) {
       }
 
       if (phase !== lastWordPhase) {
+        // Text pulses run along paths built from particles' FINAL letterform
+        // adjacency; once "hold" ends, particles start draining back toward
+        // their (unrelated) source intersections, so a pulse still in
+        // flight would draw a line between two points that no longer have
+        // anything to do with each other — the same bug as the lightning
+        // gate below, just for pulses instead of the ambient crackle.
+        if (lastWordPhase === "hold") textPulses = [];
         wordPhase = phase;
         lastWordPhase = phase;
       }
