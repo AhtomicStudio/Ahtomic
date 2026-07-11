@@ -28,11 +28,11 @@ export function LoginView({ onLoginSuccess }) {
         onLoginSuccess();
       } else {
         // Fallback for mock local testing if Firebase is unconfigured
-        if (email === "admin@ahtomic.studio" && password === "admin") {
+        if (email === "admin@ahtomic.com" && password === "admin") {
           console.warn("Using simulated login fallback");
           onLoginSuccess();
         } else {
-          throw new Error("Invalid credentials (try admin@ahtomic.studio / admin in local simulation)");
+          throw new Error("Invalid credentials (try admin@ahtomic.com / admin in local simulation)");
         }
       }
     } catch (err) {
@@ -66,7 +66,7 @@ export function LoginView({ onLoginSuccess }) {
             <Input
               label="Email"
               type="email"
-              placeholder="admin@ahtomic.studio"
+              placeholder="admin@ahtomic.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={submitting}

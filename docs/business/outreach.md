@@ -22,7 +22,7 @@ For each prospect, spend 10 minutes:
 > If it's useful, I'll send over a free mock of what your homepage could look like. No strings — worst case you got a free second opinion.
 >
 > Adam
-> ahtomic.studio
+> ahtomic.com
 
 *Why it works: the observation proves effort, the mock offer is show-don't-pitch, and "no strings" is true.*
 

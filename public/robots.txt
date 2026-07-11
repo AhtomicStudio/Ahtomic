@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /login
 
-Sitemap: https://ahtomic.studio/sitemap.xml
+Sitemap: https://ahtomic.com/sitemap.xml

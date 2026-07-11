@@ -119,7 +119,7 @@ export function WebsiteView() {
     if (metaDesc && desc) metaDesc.setAttribute("content", desc);
 
     const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical && page) canonical.setAttribute("href", "https://ahtomic.studio" + (page === "Home" ? "/" : pathFor(page)));
+    if (canonical && page) canonical.setAttribute("href", "https://ahtomic.com" + (page === "Home" ? "/" : pathFor(page)));
 
     // 404s: noindex, and don't leave the previous page's canonical dangling
     // (the SPA serves 200 for unknown paths, so this is the only signal

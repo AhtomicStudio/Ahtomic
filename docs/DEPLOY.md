@@ -3,7 +3,7 @@
 The build is done (B.L.A.S.T.: Blueprint ✓, Link ✓, Architect ✓, Stylize ✓). This runbook is the **T — Trigger**: wiring the live services and shipping. Everything here is clicking through dashboards; no code changes needed.
 
 The app runs in two modes automatically:
-- **No Firebase env vars** → localStorage fallback (what you have now). Site shows default content; admin works per-browser with `admin@ahtomic.studio` / `admin`.
+- **No Firebase env vars** → localStorage fallback (what you have now). Site shows default content; admin works per-browser with `admin@ahtomic.com` / `admin`.
 - **Firebase env vars present** → real mode. Content lives in Firestore, admin login is real Firebase Auth, contact form writes to the `inquiries` collection.
 
 ## 1. Firebase project (~10 min)
@@ -52,4 +52,4 @@ The app runs in two modes automatically:
 
 - The `VITE_FIREBASE_*` values are **not secrets** — they ship in the client bundle by design. Access control is entirely in `firestore.rules`.
 - Rules recap: anyone can read published content and create a (validated) inquiry; only a signed-in user can read inquiries or write content; everything else is locked.
-- The mock login (`admin@ahtomic.studio` / `admin`) only exists when Firebase env vars are absent — it is dead code in production.
+- The mock login (`admin@ahtomic.com` / `admin`) only exists when Firebase env vars are absent — it is dead code in production.

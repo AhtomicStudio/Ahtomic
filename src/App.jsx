@@ -28,7 +28,7 @@ export default function App() {
       // Mock local authentication fallback if Firebase is not yet initialized
       const isMockAuthed = localStorage.getItem("ahtomic-mock-auth") === "true";
       if (isMockAuthed) {
-        setUser({ email: "admin@ahtomic.studio", isMock: true });
+        setUser({ email: "admin@ahtomic.com", isMock: true });
       } else {
         setUser(null);
       }
@@ -67,7 +67,7 @@ export default function App() {
   const handleLoginSuccess = () => {
     if (!auth) {
       localStorage.setItem("ahtomic-mock-auth", "true");
-      setUser({ email: "admin@ahtomic.studio", isMock: true });
+      setUser({ email: "admin@ahtomic.com", isMock: true });
     }
     navigateTo("/admin");
   };

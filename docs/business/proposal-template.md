@@ -41,7 +41,7 @@
 
 ## Why us
 
-One person directs your project — design, scope, quality. AI agents handle the build, which is why the timeline is days and not months. See the work: [ahtomic.studio/work](https://ahtomic.studio/work). [CannaPickForMe](https://cannapickforme.com) is live and serving users today.
+One person directs your project — design, scope, quality. AI agents handle the build, which is why the timeline is days and not months. See the work: [ahtomic.com/work](https://ahtomic.com/work). [CannaPickForMe](https://cannapickforme.com) is live and serving users today.
 
 ## Next step
 
