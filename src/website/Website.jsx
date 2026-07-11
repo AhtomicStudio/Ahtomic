@@ -15,7 +15,7 @@ import { Analytics } from "@vercel/analytics/react";
 
 const DEFAULT_CONTENT = {
   pages: {
-    Home: { label: "Web studio · California", headline: "Everything, down to the", headlineAccent: "atom", intro: "Small studio, serious software. One person directs every project; AI agents handle the build. Fast, focused, no agency overhead.", cta: "Start a project" },
+    Home: { label: "Web studio · California", headline: "Web design, down to the", headlineAccent: "atom", intro: "Small studio, serious software. One person directs every project; AI agents handle the build. Fast, focused, no agency overhead.", cta: "Start a project" },
     Work: { label: "Selected work", headline: "Work", headlineAccent: "", intro: "Four products so far. One live, three in the works.", cta: "Start a project" },
     Services: { label: "Services", headline: "Design, build, ship", headlineAccent: "Usually all three.", intro: "Not sure which of these you need? That's normal. Tell us what you're building and we'll figure it out together.", cta: "Start a project" },
     About: { label: "About", headline: "A small studio, on", headlineAccent: "purpose", intro: "Ahtomic Studio builds websites and mobile apps from California. One person directs every project — design, scope, quality — while AI agents handle the coding.", cta: "Start a project" },
