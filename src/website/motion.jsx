@@ -7,7 +7,12 @@ export * from "../motion";
 // Tracks the CMS "Motion: Off" setting (data-motion attribute on <html>,
 // set by the admin Appearance panel via an effect in Website.jsx).
 function useCmsMotionOff() {
-  const [off, setOff] = React.useState(() => document.documentElement.dataset.motion === "Off");
+  // typeof document guard: this runs during SSR (src/entry-server.jsx),
+  // where document doesn't exist. Defaulting to "not off" is harmless there
+  // since prerendered static markup has no animation to suppress anyway.
+  const [off, setOff] = React.useState(
+    () => typeof document !== "undefined" && document.documentElement.dataset.motion === "Off"
+  );
   React.useEffect(() => {
     const update = () => setOff(document.documentElement.dataset.motion === "Off");
     update();
