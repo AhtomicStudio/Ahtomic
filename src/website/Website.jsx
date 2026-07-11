@@ -13,7 +13,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { Analytics } from "@vercel/analytics/react";
 
 
-const DEFAULT_CONTENT = {
+export const DEFAULT_CONTENT = {
   pages: {
     Home: { label: "Web studio · California", headline: "Web design, down to the", headlineAccent: "atom", intro: "Small studio, serious software. One person directs every project; AI agents handle the build. Fast, focused, no agency overhead.", cta: "Start a project" },
     Work: { label: "Selected work", headline: "Work", headlineAccent: "", intro: "Four products so far. One live, three in the works.", cta: "Start a project" },
@@ -33,6 +33,32 @@ const DEFAULT_CONTENT = {
 
 const PAGES = ["Home", "Work", "Services", "About", "Contact"];
 
+// Pure computation of per-page title/description/canonical/noindex — used by
+// both the client effect below (which applies it to the live DOM) and the
+// SSR entry (src/entry-server.jsx), which bakes it into prerendered HTML.
+export function getPageMeta(page, siteData) {
+  const settings = (siteData && siteData.settings) || {};
+  const brand = settings.siteTitle ? settings.siteTitle.split(" — ")[0] : "Ahtomic Studio";
+  const title = page === "Home"
+    ? (settings.siteTitle || "Ahtomic Studio — Websites and apps, built properly")
+    : page
+      ? `${page} — ${brand}`
+      : `Page not found — ${brand}`;
+
+  // Home uses the site description; other pages use their intro copy
+  const pageData = page && siteData ? (siteData.pages || {})[page] : null;
+  const description = page === "Home"
+    ? (settings.siteDescription || "")
+    : (pageData && pageData.intro) || settings.siteDescription || "";
+
+  const canonical = page ? "https://ahtomic.com" + (page === "Home" ? "/" : pathFor(page)) : null;
+  // 404s: noindex, and no canonical (the SPA serves 200 for unknown paths,
+  // so this is the only signal crawlers get that the page isn't real content)
+  const noindex = !page;
+
+  return { title, description, canonical, noindex };
+}
+
 // Resolve the current URL to a page name; null means 404.
 // Legacy hash URLs (/#work) still resolve so old links keep working.
 const fromLocation = () => {
@@ -44,10 +70,15 @@ const fromLocation = () => {
   return PAGES.find((p) => "/" + p.toLowerCase() === path) || null;
 };
 
-export function WebsiteView() {
-  const [page, setPage] = React.useState(fromLocation);
-  const [siteData, setSiteData] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+// initialPage/initialSiteData are only ever passed by the SSR entry
+// (src/entry-server.jsx) — fromLocation() reads window.location, which
+// doesn't exist in Node, so SSR must supply the page explicitly instead.
+// The real client entry (main.jsx -> App.jsx) never passes these, so
+// browser behavior is unchanged.
+export function WebsiteView({ initialPage, initialSiteData } = {}) {
+  const [page, setPage] = React.useState(() => initialPage !== undefined ? initialPage : fromLocation());
+  const [siteData, setSiteData] = React.useState(initialSiteData ?? null);
+  const [loading, setLoading] = React.useState(!initialSiteData);
 
   const go = (p) => {
     if (p !== page) {
@@ -101,42 +132,30 @@ export function WebsiteView() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  // Per-page title, meta description, and canonical URL
+  // Per-page title, meta description, canonical URL, and noindex — values
+  // computed by the shared getPageMeta() above, applied to the live DOM here
   React.useEffect(() => {
     if (!siteData) return;
-    const settings = siteData.settings || {};
-    const brand = settings.siteTitle ? settings.siteTitle.split(" — ")[0] : "Ahtomic Studio";
-    document.title = page === "Home"
-      ? (settings.siteTitle || "Ahtomic Studio — Websites and apps, built properly")
-      : page
-        ? `${page} — ${brand}`
-        : `Page not found — ${brand}`;
+    const { title, description, canonical, noindex } = getPageMeta(page, siteData);
+    document.title = title;
 
-    // Home uses the site description; other pages use their intro copy
-    const pageData = page ? (siteData.pages || {})[page] : null;
-    const desc = page === "Home"
-      ? (settings.siteDescription || "")
-      : (pageData && pageData.intro) || settings.siteDescription || "";
     const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc && desc) metaDesc.setAttribute("content", desc);
+    if (metaDesc && description) metaDesc.setAttribute("content", description);
 
-    const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical && page) canonical.setAttribute("href", "https://ahtomic.com" + (page === "Home" ? "/" : pathFor(page)));
-
-    // 404s: noindex, and don't leave the previous page's canonical dangling
-    // (the SPA serves 200 for unknown paths, so this is the only signal
-    // crawlers get that the page isn't real content)
+    const canonicalEl = document.querySelector('link[rel="canonical"]');
     let robots = document.querySelector('meta[name="robots"]');
-    if (!page) {
-      if (canonical) canonical.removeAttribute("href");
+    if (noindex) {
+      // don't leave the previous page's canonical dangling
+      if (canonicalEl) canonicalEl.removeAttribute("href");
       if (!robots) {
         robots = document.createElement("meta");
         robots.setAttribute("name", "robots");
         document.head.appendChild(robots);
       }
       robots.setAttribute("content", "noindex");
-    } else if (robots) {
-      robots.remove();
+    } else {
+      if (canonicalEl && canonical) canonicalEl.setAttribute("href", canonical);
+      if (robots) robots.remove();
     }
   }, [page, siteData]);
 
