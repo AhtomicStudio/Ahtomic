@@ -10,6 +10,8 @@ import { AboutPage } from "./About";
 import { ContactPage } from "./Contact";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { Analytics } from "@vercel/analytics/react";
+
 
 const DEFAULT_CONTENT = {
   pages: {
@@ -922,6 +924,7 @@ export function WebsiteView() {
 
   return (
     <MotionProvider>
+      <Analytics />
       <div data-screen-label={page || "404"} style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <a href="#main-content" className="skip-link" onClick={(e) => { e.preventDefault(); const mainEl = document.getElementById("main-content"); if (mainEl) mainEl.focus(); }}>Skip to content</a>
 
