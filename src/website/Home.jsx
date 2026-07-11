@@ -13,19 +13,89 @@ import { Page } from "./shared";
 // existing dot-pop keyframe/timing (see styles.css) for its one-shot
 // entrance — same precedent as the red period, no new motion vocabulary,
 // and no infinite loop (brand rule: "no bounces, no infinite loops").
+//
+// Hovering spins it up; leaving lets it coast back down instead of
+// stopping dead. Driven by a manual rAF loop on a nested span (so its
+// rotate transform never fights dot-pop's scale transform on the outer
+// span) rather than an m.*/animate value — that keeps the loop itself
+// hover-gated: it unsubscribes the moment velocity reaches zero, so
+// there's no persistent rAF at rest either, not just no visible motion.
+// Checked against both reduced-motion signals (OS setting + CMS
+// "Motion: Off") at hover-start, the same two signals MotionProvider
+// gates m.* components on — nothing here animates before a hover, so a
+// one-time check per hover is enough.
 function AtomSpark() {
+  const spinRef = React.useRef(null);
+  const angle = React.useRef(0);
+  const velocity = React.useRef(0);
+  const hovered = React.useRef(false);
+  const raf = React.useRef(null);
+  const lastT = React.useRef(null);
+
+  const MAX_V = 620; // deg/s top spin speed
+  const ACCEL = 1000; // deg/s^2 while hovered
+  const DECEL = 480; // deg/s^2 while coasting down
+
+  const tick = (now) => {
+    if (lastT.current == null) lastT.current = now;
+    const dt = Math.min(0.05, (now - lastT.current) / 1000);
+    lastT.current = now;
+
+    velocity.current = hovered.current
+      ? Math.min(MAX_V, velocity.current + ACCEL * dt)
+      : Math.max(0, velocity.current - DECEL * dt);
+    angle.current = (angle.current + velocity.current * dt) % 360;
+    if (spinRef.current) spinRef.current.style.transform = `rotate(${angle.current}deg)`;
+
+    if (hovered.current || velocity.current > 0.5) {
+      raf.current = requestAnimationFrame(tick);
+    } else {
+      raf.current = null;
+      lastT.current = null;
+    }
+  };
+
+  const startLoop = () => {
+    if (raf.current == null) {
+      lastT.current = null;
+      raf.current = requestAnimationFrame(tick);
+    }
+  };
+
+  const motionAllowed = () =>
+    typeof window !== "undefined" &&
+    document.documentElement.dataset.motion !== "Off" &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const handleEnter = () => {
+    if (!motionAllowed()) return;
+    hovered.current = true;
+    startLoop();
+  };
+  const handleLeave = () => {
+    hovered.current = false;
+  };
+
+  React.useEffect(() => () => {
+    if (raf.current != null) cancelAnimationFrame(raf.current);
+  }, []);
+
   return (
     <span
       aria-hidden="true"
       className="dot-pop"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
       style={{ display: "inline-flex", width: "0.62em", height: "0.62em", margin: "0 0.16em", verticalAlign: "0.03em" }}
     >
-      <svg viewBox="0 0 24 24" width="100%" height="100%" style={{ overflow: "visible" }}>
-        <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" />
-        <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" transform="rotate(60 12 12)" />
-        <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" transform="rotate(120 12 12)" />
-        <circle cx="12" cy="12" r="2.8" fill="var(--accent)" />
-      </svg>
+      <span ref={spinRef} style={{ display: "inline-flex", width: "100%", height: "100%" }}>
+        <svg viewBox="0 0 24 24" width="100%" height="100%" style={{ overflow: "visible" }}>
+          <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" />
+          <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" transform="rotate(60 12 12)" />
+          <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" transform="rotate(120 12 12)" />
+          <circle cx="12" cy="12" r="2.8" fill="var(--accent)" />
+        </svg>
+      </span>
     </span>
   );
 }
