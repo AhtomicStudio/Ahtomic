@@ -7,6 +7,44 @@ import { ProjectCard } from "../components/marketing/ProjectCard";
 import { Card } from "../components/display/Card";
 import { Page } from "./shared";
 
+// A comma reads as a small, awkward mark at hero-headline size — this
+// stands in for it: a tiny atom (red nucleus, silver orbit rings), echoing
+// the "atom" accent word that follows later in the same line. Reuses the
+// existing dot-pop keyframe/timing (see styles.css) for its one-shot
+// entrance — same precedent as the red period, no new motion vocabulary,
+// and no infinite loop (brand rule: "no bounces, no infinite loops").
+function AtomSpark() {
+  return (
+    <span
+      aria-hidden="true"
+      className="dot-pop"
+      style={{ display: "inline-flex", width: "0.62em", height: "0.62em", margin: "0 0.16em", verticalAlign: "0.03em" }}
+    >
+      <svg viewBox="0 0 24 24" width="100%" height="100%" style={{ overflow: "visible" }}>
+        <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" />
+        <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" transform="rotate(60 12 12)" />
+        <ellipse cx="12" cy="12" rx="11" ry="4.4" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" opacity="0.55" transform="rotate(120 12 12)" />
+        <circle cx="12" cy="12" r="2.8" fill="var(--accent)" />
+      </svg>
+    </span>
+  );
+}
+
+// Splits the headline on its first comma and renders the AtomSpark glyph in
+// its place instead of the literal character — falls back to plain text
+// untouched if there's no comma, so editing the copy later never breaks.
+function renderHeadline(text) {
+  const i = text.indexOf(",");
+  if (i === -1) return text;
+  return (
+    <>
+      {text.slice(0, i)}
+      <AtomSpark />
+      {text.slice(i + 1).replace(/^\s+/, "")}
+    </>
+  );
+}
+
 export function HomePage({ go, data = {}, projects = [] }) {
   const p = data.Home || {
     label: "Web studio · California",
@@ -36,7 +74,7 @@ export function HomePage({ go, data = {}, projects = [] }) {
               {p.label}
             </m.div>
             <m.h1 {...revealProps(90)} className="hero-title" style={{ margin: 0, fontWeight: 700, letterSpacing: "var(--tracking-display)", lineHeight: "var(--leading-tight)" }}>
-              {p.headline}{" "}
+              {renderHeadline(p.headline)}{" "}
               {p.headlineAccent && (
                 <span style={{ color: "var(--text-accent)" }}>{p.headlineAccent}</span>
               )}
