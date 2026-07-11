@@ -25,6 +25,31 @@
   <meta name="twitter:title" content="Ahtomic Studio — Websites and apps, built properly">
   <meta name="twitter:description" content="A small web studio in California shipping websites and mobile apps. One person directs every project; AI agents handle the build.">
   <meta name="twitter:image" content="https://ahtomic.com/og.png">
+
+  <!-- Structured data: static, so crawlers that don't render JS still get
+       an unambiguous signal about what this business is. Keep in sync with
+       settings.siteDescription in the CMS if that copy changes materially. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "name": "Ahtomic Studio",
+    "url": "https://ahtomic.com/",
+    "image": "https://ahtomic.com/og.png",
+    "description": "A small web studio in California shipping websites and mobile apps. One person directs every project; AI agents handle the build.",
+    "email": "ahtomicstudio@gmail.com",
+    "areaServed": {
+      "@type": "State",
+      "name": "California"
+    },
+    "address": {
+      "@type": "PostalAddress",
+      "addressRegion": "CA",
+      "addressCountry": "US"
+    },
+    "sameAs": []
+  }
+  </script>
 </head>
 <body>
   <div id="root"></div>
