@@ -101,6 +101,11 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
   // page normally drives (meta, nav highlight, ambient glow), not just in the
   // main content dispatch below.
   const effectivePage = slug && !activeProject ? null : page;
+  // The word-reveal canvas only makes sense on Home (it spells "Ahtomic").
+  // Other pages get a static CSS grid instead — same look at rest, zero
+  // ongoing canvas cost, since that ambient system was previously running
+  // on every page regardless of whether the word reveal was relevant there.
+  const isHome = page === "Home";
 
   const go = (p, projSlug = null) => {
     if (p !== page || projSlug !== route.slug) {
@@ -208,6 +213,11 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches || a.motion === "Off";
     const animate = !reduced && a.motion !== "Subtle";
+    // Rough, real-world signal for weaker hardware (older laptops commonly
+    // report far fewer cores than current machines) — not precise, but
+    // enough to automatically ease off particle count and pulse frequency
+    // instead of relying on someone manually flipping a CMS toggle per visitor.
+    const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
     const ctx = canvas.getContext("2d");
     const CELL = 72;
     const BASE = "rgba(217,220,226,0.033)";
@@ -290,8 +300,9 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
       // Particle count scales with the letterform's actual width — a fixed
       // count packed into a small mobile field turns the letters to mush.
       // ~520 at desktop width, ~260 on a phone. (Count is also the biggest
-      // perf lever; this is what took hold-phase from ~45fps to 60.)
-      const numParticles = Math.min(Math.max(260, Math.round(fw * 0.72)), 520, candidates.length);
+      // perf lever; this is what took hold-phase from ~45fps to 60.) Capped
+      // lower still on lowPower hardware — same letterform, fewer nodes.
+      const numParticles = Math.min(Math.max(260, Math.round(fw * 0.72)), lowPower ? 320 : 520, candidates.length);
       const step = candidates.length / numParticles;
       const interMap = new Map(); // grid intersection -> aggregate flow timings
 
@@ -349,7 +360,8 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
         if (!buckets.has(k)) buckets.set(k, []);
         buckets.get(k).push(i);
       });
-      for (let i = 0; i < particles.length && lightningPairs.length < 360; i++) {
+      const maxLightningPairs = lowPower ? 200 : 360;
+      for (let i = 0; i < particles.length && lightningPairs.length < maxLightningPairs; i++) {
         const p1 = particles[i];
         const bx = p1.tx >> 5, by = p1.ty >> 5;
         let linked = 0;
@@ -856,7 +868,7 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
       // Electricity pulses travel along atomic pathways only during hold/reveal phases
       if (p > 0.05) {
         const spawnChance = isNearLogo ? dt * 25.0 : dt * 6.5;
-        const maxPulses = isNearLogo ? 15 : 6;
+        const maxPulses = lowPower ? (isNearLogo ? 8 : 3) : (isNearLogo ? 15 : 6);
         if (wordPhase === "hold" && Math.random() < spawnChance && textPulses.length < maxPulses) {
           spawnTextPulse();
         }
@@ -885,18 +897,32 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
       // dev-only timing hook for visual tests; stripped from prod builds
       window.__wordState = () => ({ t0: wordT0, phase: wordPhase, el: wordT0 >= 0 ? performance.now() - wordT0 : -1 });
     }
+    // Ambient pulses used to respawn forever, every ~1-3s, on every page —
+    // a small but permanent background redraw tax for the whole session.
+    // Letting it settle after a while (and pausing while the tab is hidden)
+    // removes that ongoing cost with no visible loss: the word reveal and
+    // hover interactions still work exactly the same either way.
+    const AMBIENT_SETTLE_MS = 24000;
+    const ambientStart = performance.now();
+    const maxConcurrentPulses = lowPower ? 3 : 5;
     const spawnPulse = () => {
-      if (pulses.length < 5) {
+      if (document.hidden) {
+        pulseTimer = setTimeout(spawnPulse, 2000);
+        return;
+      }
+      if (performance.now() - ambientStart > AMBIENT_SETTLE_MS) return;
+      if (pulses.length < maxConcurrentPulses) {
         pulses.push(makePulse());
-        if (Math.random() < 0.35 && pulses.length < 5) pulses.push(makePulse()); // double-strike
-        if (Math.random() < 0.12 && pulses.length < 5) pulses.push(makePulse()); // rare burst
+        if (Math.random() < 0.35 && pulses.length < maxConcurrentPulses) pulses.push(makePulse()); // double-strike
+        if (Math.random() < 0.12 && pulses.length < maxConcurrentPulses) pulses.push(makePulse()); // rare burst
       }
       ensureLoop();
-      pulseTimer = setTimeout(spawnPulse, 900 + Math.random() * 2400);
+      const interval = lowPower ? 1800 + Math.random() * 3600 : 900 + Math.random() * 2400;
+      pulseTimer = setTimeout(spawnPulse, interval);
     };
 
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      dpr = Math.min(window.devicePixelRatio || 1, lowPower ? 1 : 1.5);
       W = window.innerWidth; H = window.innerHeight;
       canvas.width = W * dpr; canvas.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -948,7 +974,7 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
       if (wordTimer) clearTimeout(wordTimer);
       if (pulseTimer) clearTimeout(pulseTimer);
     };
-  }, [siteData]);
+  }, [siteData, isHome]);
 
   // Apply admin-controlled appearance settings to the document
   React.useEffect(() => {
@@ -989,7 +1015,7 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
 
         {a.grid && (
           <div className="backdrop" aria-hidden="true">
-            <canvas id="grid-canvas"></canvas>
+            {isHome ? <canvas id="grid-canvas"></canvas> : <div className="backdrop-grid-static"></div>}
           </div>
         )}
 

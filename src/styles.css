@@ -23,6 +23,16 @@
   -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 55%, transparent 90%);
   mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 55%, transparent 90%);
 }
+/* Static stand-in for the animated grid canvas on every page except Home —
+   same 72px cell lines the canvas draws at rest, no per-frame rendering. */
+.backdrop-grid-static {
+  position: absolute; inset: 0;
+  background-image:
+    repeating-linear-gradient(to right, rgba(217,220,226,0.033) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(to bottom, rgba(217,220,226,0.033) 0 1px, transparent 1px 72px);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 55%, transparent 90%);
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.25) 55%, transparent 90%);
+}
 .backdrop::after { /* static grain via tiny SVG noise tile */
   content: ""; position: absolute; inset: 0; opacity: 0.35;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.86 0 0 0 0 0.89 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
