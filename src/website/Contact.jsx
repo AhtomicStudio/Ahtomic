@@ -25,10 +25,13 @@ export function ContactPage({ data = {} }) {
     replyTime: "Replies within 2 days"
   };
 
+  const BUDGET_OPTIONS = ["$1k–5k", "$5k–10k", "$10k+", "Not sure yet", "Type my own"];
+
   const [sent, setSent] = React.useState(false);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [budget, setBudget] = React.useState("Under $10k");
+  const [budget, setBudget] = React.useState(BUDGET_OPTIONS[0]);
+  const [customBudget, setCustomBudget] = React.useState("");
   const [message, setMessage] = React.useState("");
   const [types, setTypes] = React.useState({ website: true, mobileApp: false, designBrand: false });
   const [honeypot, setHoneypot] = React.useState(""); // bots fill this; humans never see it
@@ -39,6 +42,7 @@ export function ContactPage({ data = {} }) {
     const cleanName = name.trim();
     const cleanEmail = email.trim();
     const cleanMessage = message.trim();
+    const finalBudget = budget === "Type my own" ? (customBudget.trim() || "Type my own") : budget;
 
     const next = {};
     if (!cleanName) next.name = "Tell us who to reply to.";
@@ -59,14 +63,14 @@ export function ContactPage({ data = {} }) {
         await addDoc(collection(db, "inquiries"), {
           name: cleanName,
           email: cleanEmail,
-          budget,
+          budget: finalBudget,
           message: cleanMessage,
           types,
           timestamp: serverTimestamp()
         });
       } else {
         // Simulated local fallback
-        console.log("Firebase not initialized. Simulating submission:", { name: cleanName, email: cleanEmail, budget, message: cleanMessage, types });
+        console.log("Firebase not initialized. Simulating submission:", { name: cleanName, email: cleanEmail, budget: finalBudget, message: cleanMessage, types });
       }
       setSent(true);
     } catch (e) {
@@ -118,10 +122,13 @@ export function ContactPage({ data = {} }) {
               </div>
               <Select
                 label="Budget"
-                options={["Under $10k", "$10–50k", "$50k+", "Not sure yet"]}
+                options={BUDGET_OPTIONS}
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
               />
+              {budget === "Type my own" && (
+                <Input label="Your budget" placeholder="e.g. $3,500" value={customBudget} maxLength={60} onChange={(e) => setCustomBudget(e.target.value)} />
+              )}
               <Input label="About the project" textarea placeholder="What are you building?" value={message} maxLength={4900} onChange={(e) => setMessage(e.target.value)} error={errs.message} />
               {/* Honeypot — visually hidden, tab-skipped; only bots fill it */}
               <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", width: 1, height: 1, overflow: "hidden" }}>
