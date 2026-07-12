@@ -15,7 +15,7 @@ export function WorkPage({ go, data = {}, projects = [] }) {
     label: "Selected work",
     headline: "Work",
     headlineAccent: "",
-    intro: "Four products so far. One live, three in the works.",
+    intro: "Four products so far. Two live, two in the works.",
     cta: "Start a project"
   };
 

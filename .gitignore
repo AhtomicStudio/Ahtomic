@@ -1,6 +1,9 @@
 node_modules/
 dist/
 dist-server/
+# Separate app with its own git repo (github.com/AhtomicStudio/chalkboard) —
+# not part of this repo's history.
+Chalktalk/
 .env
 .env.local
 .env.*.local

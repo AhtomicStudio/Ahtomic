@@ -13,7 +13,7 @@ export const projectPathFor = (project) => pathFor("Work") + "/" + slugify(proje
 export const projectImage = (project) => {
   if (project.image) return project.image;
   if (project.title === "CannaPickForMe") return "/assets/portfolio/cannapickforme/home.webp";
-  if (project.title === "A Chalkboard for Two") return "/assets/portfolio/chalkboard/landing.webp";
+  if (project.title === "Chalktalk") return "/assets/portfolio/chalkboard/landing.webp";
   return "";
 };
 
