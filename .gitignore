@@ -23,3 +23,5 @@ npm-debug.log*
 # IDE / OS files
 .vscode/
 .idea/
+.vercel
+.env*

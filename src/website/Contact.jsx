@@ -73,6 +73,14 @@ export function ContactPage({ data = {} }) {
         console.log("Firebase not initialized. Simulating submission:", { name: cleanName, email: cleanEmail, budget: finalBudget, message: cleanMessage, types });
       }
       setSent(true);
+
+      // Best-effort email notification — Firestore above is the real
+      // record, so a failure here never blocks the visitor's success state.
+      fetch("/api/send-inquiry-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: cleanName, email: cleanEmail, budget: finalBudget, message: cleanMessage, types }),
+      }).catch((err) => console.warn("Email notification failed:", err));
     } catch (e) {
       console.error("Submission error:", e.code || e.message || e);
       const code = e.code ? ` (${e.code})` : "";
