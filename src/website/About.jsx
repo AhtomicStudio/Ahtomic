@@ -59,7 +59,7 @@ export function AboutPage({ go, data = {}, projects = [] }) {
         </h1>
         <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 20, fontSize: 16, lineHeight: 1.7, color: "var(--text-secondary)" }}>
           <p style={{ margin: 0 }}>{p.intro}</p>
-          <p style={{ margin: 0 }}>We take on a few projects at a time and stay with them. Most of our work is long relationships: ship, measure, improve.</p>
+          <p style={{ margin: 0 }}>I'm not a classically trained developer — I run every project personally, and tools like Claude and Gemini turn a clear brief into real, working software. No account managers, no handoffs, same person from first call to launch.</p>
         </div>
         <div className="stats-grid" style={{ marginTop: 48 }}>
           {[
