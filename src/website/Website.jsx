@@ -1003,7 +1003,7 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
     Home: <HomePage go={go} data={siteData.pages} projects={siteData.projects} />,
     Work: <WorkPage go={go} data={siteData.pages} projects={siteData.projects} />,
     Services: <ServicesPage go={go} data={siteData.pages} />,
-    About: <AboutPage go={go} data={siteData.pages} projects={siteData.projects} />,
+    About: <AboutPage go={go} data={siteData.pages} />,
     Contact: <ContactPage data={siteData} />,
   };
 

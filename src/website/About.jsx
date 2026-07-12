@@ -1,37 +1,9 @@
 import React from "react";
-import { m } from "motion/react";
-import { revealProps } from "./motion";
 import { SectionLabel } from "../components/marketing/SectionLabel";
 import { Button } from "../components/forms/Button";
-import { Card } from "../components/display/Card";
 import { Page } from "./shared";
 
-function CountUp({ to }) {
-  const [n, setN] = React.useState(0);
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([en]) => {
-      if (!en.isIntersecting) return;
-      io.disconnect();
-      const target = parseInt(to, 10);
-      const t0 = performance.now();
-      const dur = 900;
-      const tick = (t) => {
-        const p = Math.min(1, (t - t0) / dur);
-        setN(Math.round(target * (1 - Math.pow(1 - p, 3))));
-        if (p < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    }, { threshold: 0.4 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [to]);
-  return <span ref={ref}>{n}</span>;
-}
-
-export function AboutPage({ go, data = {}, projects = [] }) {
+export function AboutPage({ go, data = {} }) {
   const p = data.About || {
     label: "About",
     headline: "A small studio, on",
@@ -39,10 +11,6 @@ export function AboutPage({ go, data = {}, projects = [] }) {
     intro: "Ahtomic Studio builds websites and mobile apps from California. One person directs every project — design, scope, quality — while AI agents handle the coding.",
     cta: "Start a project"
   };
-
-  // Dynamically calculate project counts
-  const totalProjects = String(projects.length);
-  const liveProjects = String(projects.filter(proj => proj.live).length);
 
   return (
     <Page>
@@ -61,26 +29,10 @@ export function AboutPage({ go, data = {}, projects = [] }) {
           <p style={{ margin: 0 }}>{p.intro}</p>
           <p style={{ margin: 0 }}>I'm not a classically trained developer — I run every project personally, and tools like Claude and Gemini turn a clear brief into real, working software. No account managers, no handoffs, same person from first call to launch.</p>
         </div>
-        <div className="stats-grid" style={{ marginTop: 48 }}>
-          {[
-            [totalProjects, "products shipped or shipping"],
-            [liveProjects, "live and in use today"],
-            ["1", "point of contact, always"]
-          ].map(([n, d], i) => (
-            <m.div key={d} {...revealProps(i * 90)}>
-              <Card className="stat-card" style={{ height: "100%", padding: 20 }}>
-                <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: "var(--tracking-display)" }}>
-                  <CountUp to={n} />
-                  <span style={{ color: "var(--accent)" }}>.</span>
-                </div>
-                <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{d}</div>
-              </Card>
-            </m.div>
-          ))}
-        </div>
-        <div className="btn-row" style={{ marginTop: 64 }}>
+        <div className="btn-row" style={{ marginTop: 64, alignItems: "center" }}>
           <Button variant="primary" size="lg" onClick={() => go("Contact")}>{p.cta || "Start a project"}</Button>
           <Button variant="secondary" size="lg" onClick={() => go("Work")}>See the work</Button>
+          <img src="/assets/mascot/thom.webp" alt="Thom the mascot" title="Thom — quality control" className="thom" style={{ height: 40, width: "auto" }} />
         </div>
       </div>
     </Page>
