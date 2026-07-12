@@ -2,12 +2,13 @@ import React from "react";
 import { AnimatePresence, m } from "motion/react";
 import { MotionProvider, pageTransition } from "./motion";
 import { Button } from "../components/forms/Button";
-import { Nav, Footer, BackToTop, Page, pathFor } from "./shared";
+import { Nav, Footer, BackToTop, Page, pathFor, slugify, projectPathFor } from "./shared";
 import { HomePage } from "./Home";
 import { WorkPage } from "./Work";
 import { ServicesPage } from "./Services";
 import { AboutPage } from "./About";
 import { ContactPage } from "./Contact";
+import { ProjectDetailPage } from "./ProjectDetail";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Analytics } from "@vercel/analytics/react";
@@ -22,10 +23,10 @@ export const DEFAULT_CONTENT = {
     Contact: { label: "Contact", headline: "Start a", headlineAccent: "project", intro: "Tell us what you're building. A few sentences is plenty — we'll reply within two days with honest thoughts on scope, budget, and whether we're the right fit.", cta: "Send it" },
   },
   projects: [
-    { title: "CannaPickForMe", meta: "Web app · Live", tags: ["Web"], live: true, visible: true, url: "https://cannapickforme.com", blurb: "A strain matcher for adults 21+. Four questions, one personalized pick from 200+ strains." },
-    { title: "A Chalkboard for Two", meta: "Web app", tags: ["Web"], live: false, visible: true, blurb: "One shared chalkboard, split down the middle. Built for leaving little notes between two people over a private link." },
-    { title: "Snapacat", meta: "Mobile app · In progress", tags: ["Mobile"], live: false, visible: true, blurb: "Log photos and notes of neighborhood cats; the app turns each cat into a sprite you can collect." },
-    { title: "BudSnap", meta: "Mobile app · In progress", tags: ["Mobile"], live: false, visible: true, blurb: "A living Pokédex for cannabis. A fun way of logging for a forgetful demographic." },
+    { title: "CannaPickForMe", meta: "Web app · Live", tags: ["Web"], live: true, visible: true, url: "https://cannapickforme.com", blurb: "A strain matcher for adults 21+. Four questions, one personalized pick from 200+ strains.", challenge: "Dispensary menus list hundreds of strains with no way to tell what actually fits you — most people just guess, or ask a rushed budtender.", approach: "Four short questions narrow 200+ strains down to one confident pick, with age-gating and sponsored-listing labels built in from the start.", outcome: "Live today. What used to be a confused scroll through a menu is now a one-minute conversation." },
+    { title: "A Chalkboard for Two", meta: "Web app", tags: ["Web"], live: false, visible: true, blurb: "One shared chalkboard, split down the middle. Built for leaving little notes between two people over a private link.", challenge: "Shared-note apps are built for teams and groups — there wasn't a small, private version for just two people.", approach: "One page, one link, no accounts. A single chalkboard split down the middle that both people can write and doodle on.", outcome: "In private beta with a handful of couples before a public launch." },
+    { title: "Snapacat", meta: "Mobile app · In progress", tags: ["Mobile"], live: false, visible: true, blurb: "Log photos and notes of neighborhood cats; the app turns each cat into a sprite you can collect.", challenge: "People already photograph neighborhood cats on their phones, but there's no good way to track sightings over time or share them.", approach: "Every logged cat becomes a collectible sprite, turning a habit people already have into something worth keeping up.", outcome: "Core capture-and-collect loop is built. Store submission is next." },
+    { title: "BudSnap", meta: "Mobile app · In progress", tags: ["Mobile"], live: false, visible: true, blurb: "A living Pokédex for cannabis. A fun way of logging for a forgetful demographic.", challenge: "People trying different cannabis products rarely remember what worked and what didn't — most tracking tools feel clinical, not habit-forming.", approach: "A playful, Pokédex-style log: snap it, rate it, build a personal collection instead of a spreadsheet.", outcome: "Logging and collection views are built. Cross-device sync is next." },
   ],
   appearance: { accent: "#ff3b2f", glow: true, grid: true, grain: true, sheen: true, motion: "Full" },
   settings: { email: "ahtomicstudio@gmail.com", location: "California · Remote-friendly", replyTime: "Replies within 2 days", footerTagline: "Websites and mobile apps, designed and built.", copyright: "© 2026 Ahtomic Studio", siteTitle: "Ahtomic Studio — Websites and apps, built properly", siteDescription: "A small web studio shipping websites and mobile apps. One person directs every project; AI agents handle the build." },
@@ -36,9 +37,19 @@ const PAGES = ["Home", "Work", "Services", "About", "Contact"];
 // Pure computation of per-page title/description/canonical/noindex — used by
 // both the client effect below (which applies it to the live DOM) and the
 // SSR entry (src/entry-server.jsx), which bakes it into prerendered HTML.
-export function getPageMeta(page, siteData) {
+export function getPageMeta(page, siteData, project) {
   const settings = (siteData && siteData.settings) || {};
   const brand = settings.siteTitle ? settings.siteTitle.split(" — ")[0] : "Ahtomic Studio";
+
+  if (project) {
+    return {
+      title: `${project.title} — ${brand}`,
+      description: project.blurb || settings.siteDescription || "",
+      canonical: "https://ahtomic.com" + projectPathFor(project),
+      noindex: false,
+    };
+  }
+
   const title = page === "Home"
     ? (settings.siteTitle || "Ahtomic Studio — Websites and apps, built properly")
     : page
@@ -59,15 +70,18 @@ export function getPageMeta(page, siteData) {
   return { title, description, canonical, noindex };
 }
 
-// Resolve the current URL to a page name; null means 404.
+// Resolve the current URL to { page, slug }; page null means 404. slug is
+// only set for a matched /work/<slug> project detail path.
 // Legacy hash URLs (/#work) still resolve so old links keep working.
 const fromLocation = () => {
   const h = window.location.hash.replace("#", "").toLowerCase();
   const hashPage = PAGES.find((p) => p.toLowerCase() === h);
-  if (hashPage) return hashPage;
+  if (hashPage) return { page: hashPage, slug: null };
   const path = window.location.pathname.toLowerCase().replace(/\/+$/, "") || "/";
-  if (path === "/") return "Home";
-  return PAGES.find((p) => "/" + p.toLowerCase() === path) || null;
+  if (path === "/") return { page: "Home", slug: null };
+  const workMatch = path.match(/^\/work\/([a-z0-9-]+)$/);
+  if (workMatch) return { page: "Work", slug: workMatch[1] };
+  return { page: PAGES.find((p) => "/" + p.toLowerCase() === path) || null, slug: null };
 };
 
 // initialPage/initialSiteData are only ever passed by the SSR entry
@@ -75,15 +89,23 @@ const fromLocation = () => {
 // doesn't exist in Node, so SSR must supply the page explicitly instead.
 // The real client entry (main.jsx -> App.jsx) never passes these, so
 // browser behavior is unchanged.
-export function WebsiteView({ initialPage, initialSiteData } = {}) {
-  const [page, setPage] = React.useState(() => initialPage !== undefined ? initialPage : fromLocation());
+export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) {
+  const [route, setRoute] = React.useState(() =>
+    initialPage !== undefined ? { page: initialPage, slug: initialSlug ?? null } : fromLocation()
+  );
+  const { page, slug } = route;
   const [siteData, setSiteData] = React.useState(initialSiteData ?? null);
   const [loading, setLoading] = React.useState(!initialSiteData);
+  const activeProject = slug && siteData ? (siteData.projects || []).find((pr) => slugify(pr.title) === slug) : null;
+  // An unmatched /work/<slug> is a real 404 — treat it as page=null everywhere
+  // page normally drives (meta, nav highlight, ambient glow), not just in the
+  // main content dispatch below.
+  const effectivePage = slug && !activeProject ? null : page;
 
-  const go = (p) => {
-    if (p !== page) {
-      window.history.pushState({}, "", pathFor(p));
-      setPage(p);
+  const go = (p, projSlug = null) => {
+    if (p !== page || projSlug !== route.slug) {
+      window.history.pushState({}, "", projSlug ? `${pathFor(p)}/${projSlug}` : pathFor(p));
+      setRoute({ page: p, slug: projSlug });
     }
     window.scrollTo(0, 0);
   };
@@ -125,7 +147,7 @@ export function WebsiteView({ initialPage, initialSiteData } = {}) {
   // Browser back/forward
   React.useEffect(() => {
     const onPop = () => {
-      setPage(fromLocation());
+      setRoute(fromLocation());
       window.scrollTo(0, 0);
     };
     window.addEventListener("popstate", onPop);
@@ -136,7 +158,7 @@ export function WebsiteView({ initialPage, initialSiteData } = {}) {
   // computed by the shared getPageMeta() above, applied to the live DOM here
   React.useEffect(() => {
     if (!siteData) return;
-    const { title, description, canonical, noindex } = getPageMeta(page, siteData);
+    const { title, description, canonical, noindex } = getPageMeta(effectivePage, siteData, activeProject);
     document.title = title;
 
     const metaDesc = document.querySelector('meta[name="description"]');
@@ -157,7 +179,7 @@ export function WebsiteView({ initialPage, initialSiteData } = {}) {
       if (canonicalEl && canonical) canonicalEl.setAttribute("href", canonical);
       if (robots) robots.remove();
     }
-  }, [page, siteData]);
+  }, [page, slug, siteData]);
 
   // Scroll reveals are now handled per-component by Framer Motion's
   // whileInView (see revealVariants in ./motion) — no page-level observer
@@ -962,7 +984,7 @@ export function WebsiteView({ initialPage, initialSiteData } = {}) {
   return (
     <MotionProvider>
       <Analytics />
-      <div data-screen-label={page || "404"} style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div data-screen-label={slug ? (activeProject ? `Work/${slug}` : "404") : (page || "404")} style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <a href="#main-content" className="skip-link" onClick={(e) => { e.preventDefault(); const mainEl = document.getElementById("main-content"); if (mainEl) mainEl.focus(); }}>Skip to content</a>
 
         {a.grid && (
@@ -974,7 +996,7 @@ export function WebsiteView({ initialPage, initialSiteData } = {}) {
         {a.glow !== false && (
           <div className="ambient" id="ambient" aria-hidden="true">
             {PAGES.map((p) => (
-              <div key={p} className={`amb-${p}`} data-on={String(p === page)}></div>
+              <div key={p} className={`amb-${p}`} data-on={String(p === effectivePage)}></div>
             ))}
           </div>
         )}
@@ -986,20 +1008,22 @@ export function WebsiteView({ initialPage, initialSiteData } = {}) {
           }}></div>
         )}
 
-        <Nav page={page} go={go} />
+        <Nav page={effectivePage} go={go} />
 
         <AnimatePresence mode="wait">
           <m.main
             id="main-content"
             tabIndex={-1}
-            key={page || "404"}
+            key={slug ? `work-${slug}` : (page || "404")}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -14 }}
             transition={pageTransition}
             style={{ flex: 1, position: "relative", zIndex: 1, outline: "none" }}
           >
-            {page ? pages[page] : <NotFound go={go} />}
+            {slug
+              ? (activeProject ? <ProjectDetailPage go={go} project={activeProject} /> : <NotFound go={go} />)
+              : (page ? pages[page] : <NotFound go={go} />)}
           </m.main>
         </AnimatePresence>
 

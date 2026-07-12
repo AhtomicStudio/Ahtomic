@@ -6,6 +6,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { doc, getDoc } from "firebase/firestore";
 import { WebsiteView, getPageMeta, DEFAULT_CONTENT } from "./website/Website";
+import { slugify } from "./website/shared";
 import { db } from "./firebase";
 
 export async function fetchSiteData() {
@@ -27,3 +28,15 @@ export function renderPage(pageName, siteData) {
   const meta = getPageMeta(pageName, siteData);
   return { html, meta };
 }
+
+// One static page per project, at /work/<slug> — same shape as renderPage,
+// just with the project resolved ahead of time instead of by slug lookup.
+export function renderProjectPage(project, siteData) {
+  const html = renderToStaticMarkup(
+    <WebsiteView initialPage="Work" initialSlug={slugify(project.title)} initialSiteData={siteData} />
+  );
+  const meta = getPageMeta("Work", siteData, project);
+  return { html, meta };
+}
+
+export { slugify };

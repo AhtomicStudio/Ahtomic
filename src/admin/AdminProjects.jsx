@@ -22,7 +22,7 @@ export function ProjectsEditor({ draft, update }) {
   const addProject = () => {
     update((d) => { 
       if (!d.projects) d.projects = [];
-      d.projects.push({ title: "New project", meta: "Web app", tags: ["Web"], blurb: "", live: false, visible: true }); 
+      d.projects.push({ title: "New project", meta: "Web app", tags: ["Web"], blurb: "", challenge: "", approach: "", outcome: "", live: false, visible: true });
     });
     setEditing(projects.length);
   };
@@ -66,6 +66,12 @@ export function ProjectsEditor({ draft, update }) {
                 </div>
                 <Input label="Description" textarea rows={3} value={p.blurb} onChange={setField(i, "blurb")} />
                 <Input label="Live URL" hint="Shown as a Visit link on the Work page when set" placeholder="https://" value={p.url || ""} onChange={setField(i, "url")} style={{ maxWidth: 420 }} />
+                <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "var(--text-muted)" }}>
+                  Shown on the project's own detail page (ahtomic.com/work/&lt;slug&gt;). Leave any of these blank to hide that section.
+                </p>
+                <Input label="The challenge" textarea rows={2} value={p.challenge || ""} onChange={setField(i, "challenge")} />
+                <Input label="The approach" textarea rows={2} value={p.approach || ""} onChange={setField(i, "approach")} />
+                <Input label="The outcome" textarea rows={2} value={p.outcome || ""} onChange={setField(i, "outcome")} />
                 <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
                   <Switch label="Mark as live" checked={p.live} onChange={(e) => update((d) => { d.projects[i].live = e.target.checked; })} />
                   <div style={{ display: "flex", gap: 6 }}>

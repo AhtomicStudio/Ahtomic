@@ -5,7 +5,7 @@ import { Button } from "../components/forms/Button";
 import { SectionLabel } from "../components/marketing/SectionLabel";
 import { ProjectCard } from "../components/marketing/ProjectCard";
 import { Card } from "../components/display/Card";
-import { Page } from "./shared";
+import { Page, projectImage, projectPathFor, slugify } from "./shared";
 
 // A comma reads as a small, awkward mark at hero-headline size — this
 // stands in for it: a tiny atom (red nucleus, silver orbit rings), echoing
@@ -127,14 +127,6 @@ export function HomePage({ go, data = {}, projects = [] }) {
   // Filter for visible projects
   const visibleProjects = projects.filter(proj => proj.visible).slice(0, 2);
 
-  // Map local paths to public/src assets
-  const getProjImage = (title, imgPath) => {
-    if (imgPath) return imgPath;
-    if (title === "CannaPickForMe") return "/assets/portfolio/cannapickforme/home.webp";
-    if (title === "A Chalkboard for Two") return "/assets/portfolio/chalkboard/landing.webp";
-    return "";
-  };
-
   return (
     <div>
       <header className="hero-section">
@@ -169,8 +161,9 @@ export function HomePage({ go, data = {}, projects = [] }) {
               <ProjectCard
                 title={proj.title}
                 meta={proj.meta}
-                image={getProjImage(proj.title, proj.image)}
-                onClick={(e) => { e.preventDefault(); go("Work"); }}
+                image={projectImage(proj)}
+                href={projectPathFor(proj)}
+                onClick={(e) => { e.preventDefault(); go("Work", slugify(proj.title)); }}
               />
             </m.div>
           ))}

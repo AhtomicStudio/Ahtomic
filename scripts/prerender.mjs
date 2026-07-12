@@ -13,6 +13,7 @@ const distDir = resolve(root, "dist");
 const ssrEntry = resolve(root, "dist-server", "entry-server.js");
 
 const ROUTE_PATH = { Home: "", Work: "work", Services: "services", About: "about", Contact: "contact" };
+const ROUTE_PRIORITY = { Home: "1.0", Work: "0.9", Services: "0.8", About: "0.6", Contact: "0.8" };
 
 const escapeHtml = (s) =>
   String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -43,8 +44,10 @@ async function main() {
   }
 
   const template = readFileSync(resolve(distDir, "index.html"), "utf-8");
-  const { fetchSiteData, renderPage } = await import(`file://${ssrEntry}`);
+  const { fetchSiteData, renderPage, renderProjectPage, slugify } = await import(`file://${ssrEntry}`);
   const siteData = await fetchSiteData();
+  const today = new Date().toISOString().slice(0, 10);
+  const sitemapUrls = [];
 
   for (const [page, routePath] of Object.entries(ROUTE_PATH)) {
     try {
@@ -58,6 +61,7 @@ async function main() {
         mkdirSync(dir, { recursive: true });
         writeFileSync(resolve(dir, "index.html"), output);
       }
+      sitemapUrls.push({ loc: `https://ahtomic.com/${routePath}`, priority: ROUTE_PRIORITY[page] });
       console.log(`[prerender] wrote /${routePath}`);
     } catch (err) {
       // Never fail the whole build over one page — that route just serves
@@ -65,6 +69,31 @@ async function main() {
       console.error(`[prerender] FAILED to prerender ${page}, leaving it as the plain SPA shell:`, err);
     }
   }
+
+  const visibleProjects = (siteData.projects || []).filter((p) => p.visible);
+  for (const project of visibleProjects) {
+    try {
+      const slug = slugify(project.title);
+      const { html, meta } = renderProjectPage(project, siteData);
+      const output = injectMeta(injectBody(template, html), meta);
+      const dir = resolve(distDir, "work", slug);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(resolve(dir, "index.html"), output);
+      sitemapUrls.push({ loc: `https://ahtomic.com/work/${slug}`, priority: "0.7" });
+      console.log(`[prerender] wrote /work/${slug}`);
+    } catch (err) {
+      console.error(`[prerender] FAILED to prerender project "${project.title}":`, err);
+    }
+  }
+
+  // sitemap.xml is data-driven now that project pages exist — this
+  // overwrites the static copy Vite already inlined from public/ at the
+  // start of the build.
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls
+    .map((u) => `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><priority>${u.priority}</priority></url>`)
+    .join("\n")}\n</urlset>\n`;
+  writeFileSync(resolve(distDir, "sitemap.xml"), sitemap);
+  console.log("[prerender] wrote sitemap.xml");
 
   rmSync(resolve(root, "dist-server"), { recursive: true, force: true });
   console.log("[prerender] done");

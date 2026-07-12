@@ -6,25 +6,17 @@ import { Tabs } from "../components/display/Tabs";
 import { Tag } from "../components/display/Tag";
 import { Badge } from "../components/display/Badge";
 import { Button } from "../components/forms/Button";
-import { Page } from "./shared";
+import { Page, projectImage, projectPathFor, slugify } from "./shared";
 
 export function WorkPage({ go, data = {}, projects = [] }) {
   const [filter, setFilter] = React.useState("All");
-  
+
   const p = data.Work || {
     label: "Selected work",
     headline: "Work",
     headlineAccent: "",
     intro: "Four products so far. One live, three in the works.",
     cta: "Start a project"
-  };
-
-  // Default fallback images mapping
-  const getProjImage = (title, imgPath) => {
-    if (imgPath) return imgPath;
-    if (title === "CannaPickForMe") return "/assets/portfolio/cannapickforme/home.webp";
-    if (title === "A Chalkboard for Two") return "/assets/portfolio/chalkboard/landing.webp";
-    return "";
   };
 
   // Only show visible projects
@@ -48,14 +40,16 @@ export function WorkPage({ go, data = {}, projects = [] }) {
         <Tabs tabs={["All", "Web", "Mobile"]} value={filter} onChange={setFilter} />
         <div className="grid-2" style={{ marginTop: 32 }}>
           {shown.map((proj, i) => {
-            const img = getProjImage(proj.title, proj.image);
+            const img = projectImage(proj);
             return (
               <m.div key={proj.title} {...revealProps((i % 2) * 90)} className="ah-card ah-card--pad-md work-tile" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {img ? (
-                  <img src={img} alt={proj.title} style={{ width: "100%", aspectRatio: "16/10", objectFit: "cover", objectPosition: "top", borderRadius: "var(--radius-md)", border: "1px solid var(--line-1)", display: "block" }} />
-                ) : (
-                  <div style={{ width: "100%", aspectRatio: "16/10", borderRadius: "var(--radius-md)", border: "1px dashed var(--line-2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-disabled)" }}>No public screens yet</div>
-                )}
+                <a href={projectPathFor(proj)} onClick={(e) => { e.preventDefault(); go("Work", slugify(proj.title)); }} style={{ display: "block" }}>
+                  {img ? (
+                    <img src={img} alt={proj.title} style={{ width: "100%", aspectRatio: "16/10", objectFit: "cover", objectPosition: "top", borderRadius: "var(--radius-md)", border: "1px solid var(--line-1)", display: "block" }} />
+                  ) : (
+                    <div style={{ width: "100%", aspectRatio: "16/10", borderRadius: "var(--radius-md)", border: "1px dashed var(--line-2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-disabled)" }}>No public screens yet</div>
+                  )}
+                </a>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
                   <span style={{ fontSize: 19, fontWeight: 600 }}>{proj.title}</span>
                   {proj.live ? <Badge tone="positive" dot>Live</Badge> : <Badge tone="warning" dot>In progress</Badge>}

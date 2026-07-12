@@ -4,6 +4,19 @@ import { Button } from "../components/forms/Button";
 
 export const pathFor = (p) => (p === "Home" ? "/" : "/" + p.toLowerCase());
 
+export const slugify = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+export const projectPathFor = (project) => pathFor("Work") + "/" + slugify(project.title);
+
+// Consolidates what were two duplicated title-matching lookups (Home.jsx and
+// Work.jsx) — the project detail page needs the exact same fallback logic.
+export const projectImage = (project) => {
+  if (project.image) return project.image;
+  if (project.title === "CannaPickForMe") return "/assets/portfolio/cannapickforme/home.webp";
+  if (project.title === "A Chalkboard for Two") return "/assets/portfolio/chalkboard/landing.webp";
+  return "";
+};
+
 export function Nav({ page, go }) {
   const links = ["Home", "Work", "Services", "About"];
   const [open, setOpen] = React.useState(false);
