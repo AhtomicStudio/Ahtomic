@@ -24,7 +24,11 @@ service cloud.firestore {
                     && request.resource.data.message is string
                     && request.resource.data.message.size() < 5000;
       allow read: if request.auth != null;
-      allow update, delete: if false;
+      // Deletable by the admin (e.g. clearing spam/test entries from the
+      // dashboard); update stays blocked since a reply is a separate email,
+      // never a mutation of the original submission.
+      allow delete: if request.auth != null;
+      allow update: if false;
     }
 
     // Everything else is locked.
