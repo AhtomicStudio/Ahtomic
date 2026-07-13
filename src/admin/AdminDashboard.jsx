@@ -2,7 +2,8 @@ import React from "react";
 import { AdminSidebar, AdminTopbar, Icon } from "./AdminShared";
 import { PagesEditor } from "./AdminPages";
 import { ProjectsEditor } from "./AdminProjects";
-import { AppearanceEditor, SettingsEditor } from "./AdminAppearance";
+import { SettingsEditor } from "./AdminAppearance";
+import { InquiriesViewer } from "./AdminInquiries";
 import { Dialog } from "../components/feedback/Dialog";
 import { Button } from "../components/forms/Button";
 import { Toast } from "../components/feedback/Toast";
@@ -17,6 +18,8 @@ const DEFAULT_CONTENT = {
     Services: { label: "Services", headline: "Design, build, ship", headlineAccent: "Usually all three.", intro: "Not sure which of these you need? That's normal. Tell us what you're building and we'll figure it out together.", cta: "Start a project" },
     About: { label: "About", headline: "A small studio, on", headlineAccent: "purpose", intro: "Hi, I'm Adam. I started Ahtomic to help businesses running on aging websites, and to get real hands-on experience directing AI agents instead of reading about them from the sidelines.", cta: "Start a project" },
     Contact: { label: "Contact", headline: "Start a", headlineAccent: "project", intro: "Tell us what you're building. A few sentences is plenty — we'll reply within two days with honest thoughts on scope, budget, and whether we're the right fit.", cta: "Send it" },
+    Privacy: { label: "Privacy", headline: "Privacy", headlineAccent: "policy", intro: "What we collect through this site, and what we do with it." },
+    Terms: { label: "Terms", headline: "Terms of", headlineAccent: "service", intro: "The terms that cover using this website — not any specific client project." },
   },
   projects: [
     { title: "CannaPickForMe", meta: "Web app · Live", tags: ["Web"], live: true, visible: true, url: "https://cannapickforme.com", blurb: "A strain matcher for adults 21+. Four questions, one personalized pick from 200+ strains.", challenge: "Dispensary menus list hundreds of strains with no way to tell what actually fits you — most people just guess, or ask a rushed budtender.", approach: "Four short questions narrow 200+ strains down to one confident pick, with age-gating and sponsored-listing labels built in from the start.", outcome: "Live today. What used to be a confused scroll through a menu is now a one-minute conversation." },
@@ -182,11 +185,11 @@ export function AdminDashboard({ onLogout }) {
     );
   }
 
-  const titles = { pages: "Pages", projects: "Projects", appearance: "Appearance", settings: "Settings" };
+  const titles = { pages: "Pages", projects: "Projects", inquiries: "Inquiries", settings: "Settings" };
   const editors = {
     pages: <PagesEditor draft={draft} update={update} />,
     projects: <ProjectsEditor draft={draft} update={update} />,
-    appearance: <AppearanceEditor draft={draft} update={update} />,
+    inquiries: <InquiriesViewer />,
     settings: <SettingsEditor draft={draft} update={update} />,
   };
 

@@ -89,7 +89,12 @@ export function Footer({ go, settings = {} }) {
       </div>
       <div style={{ borderTop: "1px solid var(--line-1)" }}>
         <div className="footer-bottom" style={{ maxWidth: "var(--container-max)", margin: "0 auto", padding: "16px var(--container-pad)" }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-disabled)" }}>{copyright}</span>
+          <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-disabled)" }}>{copyright}</span>
+            {["Privacy", "Terms"].map((l) => (
+              <a key={l} href={pathFor(l)} onClick={(e) => { e.preventDefault(); go(l); }} style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-disabled)", textDecoration: "none" }}>{l}</a>
+            ))}
+          </div>
           <a href={`mailto:${email}`} style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-muted)", textDecoration: "none" }}>{email}</a>
         </div>
       </div>

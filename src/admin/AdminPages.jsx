@@ -4,7 +4,7 @@ import { Select } from "../components/forms/Select";
 import { Button } from "../components/forms/Button";
 import { EditorLayout, SectionCard } from "./AdminShared";
 
-const PAGE_LIST = ["Home", "Work", "Services", "About", "Contact"];
+const PAGE_LIST = ["Home", "Work", "Services", "About", "Contact", "Privacy", "Terms"];
 
 /* Mini live preview of the page hero, rendered from draft values */
 function PagePreview({ page, draft, accent }) {

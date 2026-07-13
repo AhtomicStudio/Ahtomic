@@ -14,7 +14,7 @@ export function Icon({ name, size = 16, stroke = 1.5, style }) {
 const ADMIN_SECTIONS = [
   { id: "pages", label: "Pages", icon: "FileText", desc: "Edit headlines and copy" },
   { id: "projects", label: "Projects", icon: "FolderOpen", desc: "Manage portfolio work" },
-  { id: "appearance", label: "Appearance", icon: "Palette", desc: "Colors, effects, motion" },
+  { id: "inquiries", label: "Inquiries", icon: "Inbox", desc: "Contact form submissions" },
   { id: "settings", label: "Settings", icon: "Settings", desc: "Contact and site details" },
 ];
 

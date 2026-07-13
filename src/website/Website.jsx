@@ -9,6 +9,8 @@ import { ServicesPage } from "./Services";
 import { AboutPage } from "./About";
 import { ContactPage } from "./Contact";
 import { ProjectDetailPage } from "./ProjectDetail";
+import { PrivacyPage } from "./Privacy";
+import { TermsPage } from "./Terms";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { Analytics } from "@vercel/analytics/react";
@@ -21,6 +23,8 @@ export const DEFAULT_CONTENT = {
     Services: { label: "Services", headline: "Design, build, ship", headlineAccent: "Usually all three.", intro: "Not sure which of these you need? That's normal. Tell us what you're building and we'll figure it out together.", cta: "Start a project" },
     About: { label: "About", headline: "A small studio, on", headlineAccent: "purpose", intro: "Hi, I'm Adam. I started Ahtomic to help businesses running on aging websites, and to get real hands-on experience directing AI agents instead of reading about them from the sidelines.", cta: "Start a project" },
     Contact: { label: "Contact", headline: "Start a", headlineAccent: "project", intro: "Tell us what you're building. A few sentences is plenty — we'll reply within two days with honest thoughts on scope, budget, and whether we're the right fit.", cta: "Send it" },
+    Privacy: { label: "Privacy", headline: "Privacy", headlineAccent: "policy", intro: "What we collect through this site, and what we do with it." },
+    Terms: { label: "Terms", headline: "Terms of", headlineAccent: "service", intro: "The terms that cover using this website — not any specific client project." },
   },
   projects: [
     { title: "CannaPickForMe", meta: "Web app · Live", tags: ["Web"], live: true, visible: true, url: "https://cannapickforme.com", blurb: "A strain matcher for adults 21+. Four questions, one personalized pick from 200+ strains.", challenge: "Dispensary menus list hundreds of strains with no way to tell what actually fits you — most people just guess, or ask a rushed budtender.", approach: "Four short questions narrow 200+ strains down to one confident pick, with age-gating and sponsored-listing labels built in from the start.", outcome: "Live today. What used to be a confused scroll through a menu is now a one-minute conversation." },
@@ -32,7 +36,7 @@ export const DEFAULT_CONTENT = {
   settings: { email: "ahtomicstudio@gmail.com", location: "California · Remote-friendly", replyTime: "Replies within 2 days", footerTagline: "Websites and mobile apps, designed and built.", copyright: "© 2026 Ahtomic Studio", siteTitle: "Ahtomic Studio — Websites and apps, built properly", siteDescription: "A small web studio shipping websites and mobile apps. One person directs every project; AI agents handle the build." },
 };
 
-const PAGES = ["Home", "Work", "Services", "About", "Contact"];
+const PAGES = ["Home", "Work", "Services", "About", "Contact", "Privacy", "Terms"];
 
 // Pure computation of per-page title/description/canonical/noindex — used by
 // both the client effect below (which applies it to the live DOM) and the
@@ -1005,6 +1009,8 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
     Services: <ServicesPage go={go} data={siteData.pages} />,
     About: <AboutPage go={go} data={siteData.pages} />,
     Contact: <ContactPage data={siteData} />,
+    Privacy: <PrivacyPage go={go} data={siteData.pages} />,
+    Terms: <TermsPage go={go} data={siteData.pages} />,
   };
 
   return (

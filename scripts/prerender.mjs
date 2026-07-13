@@ -12,8 +12,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = resolve(root, "dist");
 const ssrEntry = resolve(root, "dist-server", "entry-server.js");
 
-const ROUTE_PATH = { Home: "", Work: "work", Services: "services", About: "about", Contact: "contact" };
-const ROUTE_PRIORITY = { Home: "1.0", Work: "0.9", Services: "0.8", About: "0.6", Contact: "0.8" };
+const ROUTE_PATH = { Home: "", Work: "work", Services: "services", About: "about", Contact: "contact", Privacy: "privacy", Terms: "terms" };
+const ROUTE_PRIORITY = { Home: "1.0", Work: "0.9", Services: "0.8", About: "0.6", Contact: "0.8", Privacy: "0.2", Terms: "0.2" };
 
 const escapeHtml = (s) =>
   String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
