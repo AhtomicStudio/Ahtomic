@@ -12,12 +12,6 @@ const SERVICES = [
   ["03", "Design & brand", "Interfaces, identity, and design systems — designed and shipped under one direction.", ["UI/UX design", "Design systems", "Brand foundations"]],
 ];
 
-const PRICING = [
-  ["Starter", "$1,000", "Replace an aging site or launch something small and sharp.", ["Single site or landing page", "Copy & content help", "Live in weeks, not months"]],
-  ["Growth", "$5,000", "A fuller site or app with real functionality behind it.", ["Custom features & integrations", "CMS so you can self-edit", "SEO & performance tuned"]],
-  ["Full build", "$10,000", "A complete product, built and shipped end to end.", ["Web, mobile, or both", "Design system included", "Ongoing support available"]],
-];
-
 const ADDONS = [
   ["Maintenance", "Monthly care for an existing site — updates, monitoring, small fixes, so nothing breaks quietly."],
   ["Refresh", "Already have a site? We modernize it — new design, faster load, current practices — without a full rebuild."],
@@ -67,37 +61,8 @@ export function ServicesPage({ go, data = {} }) {
             </m.div>
           ))}
         </div>
-        <div style={{ marginTop: 96 }}>
-          <m.div {...revealProps(0)}><SectionLabel index="02">Pricing</SectionLabel></m.div>
-          <div className="grid-3" style={{ marginTop: 32 }}>
-            {PRICING.map(([tier, price, body, points], i) => (
-              <m.div key={tier} {...revealProps(i * 90)}>
-                <Card padding="lg" style={{ height: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 600 }}>{tier}</div>
-                    <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: "var(--tracking-display)", marginTop: 6 }}>
-                      From {price}
-                    </div>
-                  </div>
-                  <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.55 }}>{body}</p>
-                  <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-                    {points.map((pt) => (
-                      <li key={pt} style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", gap: 10, alignItems: "baseline" }}>
-                        <span style={{ color: "var(--text-accent)" }}>→</span>{pt}
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              </m.div>
-            ))}
-          </div>
-          <p style={{ margin: "20px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-            Every project is scoped and quoted individually — these are starting points, not fixed packages.
-          </p>
-        </div>
-
         <div style={{ marginTop: 80 }}>
-          <m.div {...revealProps(0)}><SectionLabel index="03">Add-ons</SectionLabel></m.div>
+          <m.div {...revealProps(0)}><SectionLabel index="02">Add-ons</SectionLabel></m.div>
           <div className="grid-3" style={{ marginTop: 32 }}>
             {ADDONS.map(([title, body], i) => (
               <m.div key={title} {...revealProps(i * 90)}>
@@ -111,9 +76,14 @@ export function ServicesPage({ go, data = {} }) {
         </div>
 
         <div className="svc-cta" style={{ marginTop: 64, borderTop: "1px solid var(--line-1)", paddingTop: 32 }}>
-          <p style={{ margin: 0, fontSize: 16, color: "var(--text-secondary)", maxWidth: 480 }}>
-            {p.intro}
-          </p>
+          <div>
+            <p style={{ margin: 0, fontSize: 16, color: "var(--text-secondary)", maxWidth: 480 }}>
+              {p.intro}
+            </p>
+            <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+              Projects typically start around $1,000.
+            </p>
+          </div>
           <Button variant="primary" size="lg" onClick={() => go("Contact")}>{p.cta || "Start a project"}</Button>
         </div>
       </div>
