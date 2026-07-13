@@ -8,6 +8,16 @@
   <meta name="theme-color" content="#0a0a0b">
   <link rel="canonical" href="https://ahtomic.com/">
 
+  <!-- Preconnects: fonts (render-blocking today) and the Firestore/Firebase
+       origins the public site actually calls (Auth is admin-only — see
+       src/firebaseAuth.js — so no preconnect for firebaseapp.com here). -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://firestore.googleapis.com">
+  <link rel="preconnect" href="https://firebase.googleapis.com">
+  <link rel="preconnect" href="https://firebaseinstallations.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">

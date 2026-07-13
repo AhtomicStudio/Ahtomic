@@ -1,9 +1,12 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
-const firebaseConfig = {
+// Firestore + the shared app instance only — the public site never needs
+// Auth, so it lives in ./firebaseAuth instead. That keeps firebase/auth's
+// SDK (and the network request it makes to load its iframe) out of the
+// public bundle entirely; only /admin and /login import that module.
+export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -13,15 +16,13 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-let app;
-let auth;
+export let app;
 let db;
 let analytics;
 
 try {
   if (firebaseConfig.apiKey) {
     app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
     db = getFirestore(app);
 
     // Analytics is optional — only initialize it if a measurement ID was provided
@@ -33,4 +34,4 @@ try {
   console.error("Failed to initialize Firebase:", e);
 }
 
-export { auth, db, analytics };
+export { db, analytics };

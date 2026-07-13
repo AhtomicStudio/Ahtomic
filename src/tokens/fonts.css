@@ -1,4 +1,6 @@
 /* Ahtomic Studio — webfonts.
    No font binaries were provided; these are Google Fonts CDN substitutes.
-   Swap for licensed files by replacing this import with @font-face rules. */
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+   Swap for licensed files by replacing the <link> in index.html with
+   @font-face rules. Loaded as a direct <link> there, not a CSS @import —
+   @import serializes behind this file's own download+parse, which measurably
+   delayed first render. */

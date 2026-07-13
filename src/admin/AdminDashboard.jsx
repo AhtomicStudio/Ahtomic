@@ -7,7 +7,8 @@ import { InquiriesViewer } from "./AdminInquiries";
 import { Dialog } from "../components/feedback/Dialog";
 import { Button } from "../components/forms/Button";
 import { Toast } from "../components/feedback/Toast";
-import { db, auth } from "../firebase";
+import { db } from "../firebase";
+import { auth } from "../firebaseAuth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 

@@ -1,6 +1,7 @@
 import React from "react";
 import { collection, query, orderBy, limit, getDocs, deleteDoc, doc } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { db } from "../firebase";
+import { auth } from "../firebaseAuth";
 import { EditorLayout, SectionCard, Icon } from "./AdminShared";
 import { Button } from "../components/forms/Button";
 import { Input } from "../components/forms/Input";

@@ -1,0 +1,18 @@
+# Ahtomic Studio
+
+> A small web studio in California. One person directs every project — design, scope, quality — while AI agents handle the build. Websites, mobile apps, and the design systems behind them.
+
+## Pages
+
+- [Home](https://ahtomic.com/): Overview of the studio and what it does.
+- [Work](https://ahtomic.com/work): Portfolio of shipped and in-progress projects, each with its own case study.
+- [Services](https://ahtomic.com/services): What's offered — websites, mobile apps, design & brand — and how pricing works.
+- [About](https://ahtomic.com/about): Who's behind the studio and why it exists.
+- [Contact](https://ahtomic.com/contact): Start a project.
+- [Privacy](https://ahtomic.com/privacy): What the contact form collects and how it's used.
+- [Terms](https://ahtomic.com/terms): Terms covering use of this website.
+
+## Notes
+
+- Ahtomic Studio is a real, operating business — inquiries reach a real person, not a demo form.
+- Each project in Work has its own page at /work/[project-slug] covering the challenge, approach, and outcome.

@@ -32,7 +32,7 @@ export function AboutPage({ go, data = {} }) {
         <div className="btn-row" style={{ marginTop: 64, alignItems: "center" }}>
           <Button variant="primary" size="lg" onClick={() => go("Contact")}>{p.cta || "Start a project"}</Button>
           <Button variant="secondary" size="lg" onClick={() => go("Work")}>See the work</Button>
-          <img src="/assets/mascot/thom.webp" alt="Thom the mascot" title="Thom — quality control" className="thom" style={{ height: 40, width: "auto" }} />
+          <img src="/assets/mascot/thom.webp" alt="Thom the mascot" title="Thom — quality control" className="thom" width={40} height={40} style={{ height: 40, width: "auto" }} />
         </div>
       </div>
     </Page>

@@ -5,7 +5,7 @@ import { Wordmark } from "../components/marketing/Wordmark";
 import { Toast } from "../components/feedback/Toast";
 import { Card } from "../components/display/Card";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth } from "../firebaseAuth";
 
 export function LoginView({ onLoginSuccess }) {
   const [email, setEmail] = React.useState("");

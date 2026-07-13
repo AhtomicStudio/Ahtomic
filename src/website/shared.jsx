@@ -84,15 +84,15 @@ export function Footer({ go, settings = {} }) {
           {["Work", "Services", "About", "Contact"].map((l) => (
             <a key={l} href={pathFor(l)} onClick={(e) => { e.preventDefault(); go(l); }} style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none", padding: "6px 0" }}>{l}</a>
           ))}
-          <img src="/assets/mascot/thom.webp" alt="Thom" title="Thom says hi" className="thom" style={{ height: 36, width: "auto", opacity: 0.9 }} />
+          <img src="/assets/mascot/thom.webp" alt="Thom" title="Thom says hi" className="thom" width={36} height={36} style={{ height: 36, width: "auto", opacity: 0.9 }} />
         </div>
       </div>
       <div style={{ borderTop: "1px solid var(--line-1)" }}>
         <div className="footer-bottom" style={{ maxWidth: "var(--container-max)", margin: "0 auto", padding: "16px var(--container-pad)" }}>
           <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-disabled)" }}>{copyright}</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-muted)" }}>{copyright}</span>
             {["Privacy", "Terms"].map((l) => (
-              <a key={l} href={pathFor(l)} onClick={(e) => { e.preventDefault(); go(l); }} style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-disabled)", textDecoration: "none" }}>{l}</a>
+              <a key={l} href={pathFor(l)} onClick={(e) => { e.preventDefault(); go(l); }} style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-muted)", textDecoration: "none" }}>{l}</a>
             ))}
           </div>
           <a href={`mailto:${email}`} style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--text-muted)", textDecoration: "none" }}>{email}</a>

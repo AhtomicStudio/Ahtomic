@@ -164,6 +164,7 @@ export function HomePage({ go, data = {}, projects = [] }) {
                 image={projectImage(proj)}
                 href={projectPathFor(proj)}
                 onClick={(e) => { e.preventDefault(); go("Work", slugify(proj.title)); }}
+                priority={i === 0}
               />
             </m.div>
           ))}

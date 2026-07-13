@@ -1081,7 +1081,7 @@ function NotFound({ go }) {
         </p>
         <div className="btn-row" style={{ marginTop: 36, alignItems: "center" }}>
           <Button variant="primary" size="lg" onClick={() => go("Home")}>Back to home</Button>
-          <img src="/assets/mascot/thom.webp" alt="Thom the mascot, shrugging" className="thom" style={{ height: 44, width: "auto" }} />
+          <img src="/assets/mascot/thom.webp" alt="Thom the mascot, shrugging" className="thom" width={44} height={44} style={{ height: 44, width: "auto" }} />
         </div>
       </div>
     </Page>
