@@ -2,7 +2,7 @@ import React from "react";
 import { SectionLabel } from "../components/marketing/SectionLabel";
 import { Page } from "./shared";
 
-const LAST_UPDATED = "July 12, 2026";
+const LAST_UPDATED = "July 13, 2026";
 
 const SECTIONS = [
   ["Use of the site", [
