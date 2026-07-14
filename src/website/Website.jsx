@@ -226,6 +226,13 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
     const CELL = 72;
     const BASE = "rgba(217,220,226,0.033)";
     let W = 0, H = 0, dpr = 1, field = null, fw = 0, fh = 0, fx = 0, fy = 0;
+    // False when getImageData() comes back scrubbed — some privacy/anti-
+    // fingerprinting tools (Brave Shields, strict tracking protection,
+    // canvas-blocker extensions) return blanked pixel data specifically to
+    // defeat canvas fingerprinting. The particle constellation needs real
+    // pixel data to find the letterform, so when this trips we fall back to
+    // plain text instead of silently rendering nothing (see drawWordFallback).
+    let fieldValid = true;
     let particles = [];        // letterform "atoms" — see buildBand
     let intersections = [];    // unique grid intersections particles pour from
     let lightningPairs = [];   // precomputed close-neighbor index pairs
@@ -274,6 +281,15 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
       c.fillStyle = "#fff";
       c.fillText("Ahtomic", fw / 2, fh / 2);
       field = c.getImageData(0, 0, off.width, off.height);
+
+      // Solid 700-weight text at this size always fills well over 50 opaque
+      // pixels — if a readback comes back with fewer, something intercepted
+      // getImageData rather than the glyph genuinely not rendering.
+      let alphaHits = 0;
+      for (let i = 3; i < field.data.length; i += 4) {
+        if (field.data[i] > 128) { alphaHits++; if (alphaHits > 50) break; }
+      }
+      fieldValid = alphaHits > 50;
     };
 
     const ink = (x, y) => {
@@ -468,6 +484,25 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
         ctx.fillRect(it.x - r, y - r, r * 2, r * 2);
       }
       ctx.globalAlpha = 1;
+    };
+
+    // Plain-text stand-in for drawWord when the browser's canvas readback is
+    // blocked (see fieldValid) — same position/size/timeline as the particle
+    // version, just a solid fillText instead of a constellation, since there's
+    // no pixel data to place particles from.
+    const drawWordFallback = (p, el) => {
+      if (p <= 0.01) return;
+      let alpha = p;
+      if (wordPhase === "out") {
+        const outEl = el - IN_MS - HOLD_MS;
+        alpha = Math.max(0, 1 - outEl / OUT_MS);
+      }
+      if (alpha <= 0.01) return;
+      ctx.font = "700 " + Math.round(fh / 1.5) + "px 'Space Grotesk', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(255,80,68," + alpha.toFixed(3) + ")";
+      ctx.fillText("Ahtomic", fx + fw / 2, fy + fh / 2);
     };
 
     // Render the word "Ahtomic" as a constellation of vibrating charge nodes.
@@ -667,7 +702,7 @@ export function WebsiteView({ initialPage, initialSiteData, initialSlug } = {}) 
         computeCoords(el, dt, currentScrollY);
         drawIntersections(el, currentScrollY);
         if (p > 0.05) drawTextPulses(dt, p, currentScrollY, isNearLogo);
-        drawWord(p);
+        if (fieldValid) drawWord(p); else drawWordFallback(p, el);
       }
     };
 
