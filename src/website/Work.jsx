@@ -47,7 +47,7 @@ export function WorkPage({ go, data = {}, projects = [] }) {
                   {img ? (
                     <img src={img} alt={proj.title} style={{ width: "100%", aspectRatio: "16/10", objectFit: "cover", objectPosition: "top", borderRadius: "var(--radius-md)", border: "1px solid var(--line-1)", display: "block" }} />
                   ) : (
-                    <div style={{ width: "100%", aspectRatio: "16/10", borderRadius: "var(--radius-md)", border: "1px dashed var(--line-2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-disabled)" }}>No public screens yet</div>
+                    <div style={{ width: "100%", aspectRatio: "16/10", borderRadius: "var(--radius-md)", border: "1px dashed var(--line-2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>No public screens yet</div>
                   )}
                 </a>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
