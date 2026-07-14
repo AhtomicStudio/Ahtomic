@@ -180,7 +180,7 @@ export function InquiriesViewer() {
         onClose={() => { if (!deleting) setDeleteTarget(null); }}
         actions={[
           <Button key="c" variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>,
-          <Button key="d" variant="primary" onClick={confirmDelete} disabled={deleting} style={{ background: "var(--danger)" }}>
+          <Button key="d" variant="primary" onClick={confirmDelete} disabled={deleting} style={{ background: "var(--red-700)" }}>
             {deleting ? "Deleting…" : "Delete"}
           </Button>,
         ]}

@@ -15,9 +15,14 @@
 .ah-btn--sm { height: var(--control-h-sm); padding: 0 14px; font-size: 13px; }
 .ah-btn--md { height: var(--control-h-md); padding: 0 18px; font-size: 14px; }
 .ah-btn--lg { height: var(--control-h-lg); padding: 0 24px; font-size: 15px; }
-.ah-btn--primary { background: var(--accent); color: #fff; }
-.ah-btn--primary:hover:not([disabled]) { background: var(--accent-hover); }
-.ah-btn--primary:active:not([disabled]) { background: var(--accent-press); }
+/* Resting state uses accent-press (not accent) — white text on the vibrant
+   #ff3b2f red measures 3.40:1, under the 4.5:1 AA minimum for text this
+   size (15px/600 weight, well under the "large text" exemption threshold).
+   accent-press (#e02318) clears it at 4.54:1; red-700 clears it further
+   for hover/active, which also reads fine as a "deepening" interaction. */
+.ah-btn--primary { background: var(--accent-press); color: #fff; }
+.ah-btn--primary:hover:not([disabled]) { background: var(--red-700); }
+.ah-btn--primary:active:not([disabled]) { background: var(--red-700); }
 .ah-btn--secondary { background: transparent; color: var(--text-body); border-color: var(--line-2); }
 .ah-btn--secondary:hover:not([disabled]) { border-color: var(--white-dim-2); }
 .ah-btn--ghost { background: transparent; color: var(--text-secondary); }
